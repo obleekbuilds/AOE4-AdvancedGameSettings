@@ -105,10 +105,13 @@ end
 ---------------------------------------------------------------------------------------------------
 
 function AGS_Culture_OnStrategicPointChanged(context)
-	-- Check if squad is nil and exit function if there is no instigating squad, except for changeType CT_StartedRevertingCooldown (7)
-	-- since that change type doesn't require a squad, and the squad can be nil when a squad dies within the capture radius.
-	if context.instigatorSquad == nil and not context.changeType == 7 then
-		print(string.format("Nil Squad for Holy Site Change Type %d", context.changeType))
+	-- Check if squad is nil and exit function if there is no instigating squad, except for change
+	-- types 6, 7 and 11 which do not require a squad (squad can die within or leave the radius).
+	-- FORK FIX: the old condition 'not context.changeType == 7' parsed as
+	-- '(not changeType) == 7' which is always false, so nil-squad events fell through
+	-- and crashed the handlers below. Guard now mirrors ags_religious.scar.
+	if (context.instigatorSquad == nil and context.changeType ~= 6 and context.changeType ~= 7 and context.changeType ~= 11) then
+		AGS_Print(string.format("Nil Squad for Holy Site Change Type %d", context.changeType))
 		return
 	end
 	-- Sacred site changing owneship. (Note: this is too long resolution, so it will be at the end of file.)
@@ -291,9 +294,15 @@ function AGS_Culture_OnHolySiteChange(context)
 	-- Get Holy Site progress - 0 to 1 for player/allies, 0 to -1 for enemies
 	local holy_site_progress = Player_GetStrategicPointCaptureProgress(AGS_GS_LOCAL_PLAYER.id, context.strategicPointEntity)
 	-- Get instigating player
-	local instigating_player = nil 
+	local instigating_player = nil
 	if context.instigatorSquad ~= nil then
-		instigating_player = Core_GetPlayersTableEntry(Squad_GetPlayerOwner(context.instigatorSquad))
+		-- FORK FIX: world-owned squads (e.g. after a surrender) have no player owner;
+		-- skip the event instead of crashing. Mirrors ags_religious.scar.
+		if not World_OwnsSquad(context.instigatorSquad) then
+			instigating_player = Core_GetPlayersTableEntry(Squad_GetPlayerOwner(context.instigatorSquad))
+		else
+			return
+		end
 	end
 	local site_entity_id = context.strategicPointEntity
 	
