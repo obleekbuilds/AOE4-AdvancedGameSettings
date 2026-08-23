@@ -140,6 +140,11 @@ function AGS_Regicide_OnDamageReceived(context)
 		return
 	end	
 	local attacker = Core_GetPlayersTableEntry(context.attackerOwner)
+	-- FORK FIX: a world-owned attacker (e.g. wildlife biting the king) resolves to
+	-- no player entry; skip the notification instead of crashing on attacker.id.
+	if attacker == nil then
+		return
+	end
 	AGS_Notifications_Damaged(squad_uwid, attacker, owner, AGS_NOTIFICATIONS_REGICIDE_ATTACKED)
 end
 

@@ -656,13 +656,16 @@ AGS_CIV_PREFIXES = {
 	byzantine = "byz_",
 	byzantine_ha_mac = "byz_ha_mac_",
 	chinese = "chi_",
-	chinese_ha_01 = "chi_ha_01",
+	chinese_ha_01 = "chi_ha_01_", -- FORK FIX: trailing underscore, matches abb_ha_01_ pattern
+
 	crusader_cmp = "cru_",
 	english = "eng_",
 	french = "fre_",
-	french_ha_01 = "fre_ha_01",
+	french_ha_01 = "fre_ha_01_", -- FORK FIX: trailing underscore, matches abb_ha_01_ pattern
+
 	hre = "hre_",
-	hre_ha_01 = "hre_ha_01",
+	hre_ha_01 = "hre_ha_01_", -- FORK FIX: trailing underscore, matches abb_ha_01_ pattern
+
 	japanese = "jpn_",
 	japanese_ha_sen = "jpn_ha_sen_",
 	jin = "jin_",
@@ -1450,8 +1453,17 @@ AGS_UPGRADE_TABLE = {
 function AGS_ResolveCivilizationBlueprintName(player_civ, bp_type)
 	local civ_entities = AGS_ENTITY_TABLE[player_civ]
 	if civ_entities == nil or civ_entities[bp_type] == nil then
-		AGS_Print("AGS WARNING: no blueprint '" .. tostring(bp_type) .. "' for civ '" .. tostring(player_civ) .. "', falling back to english")
-		civ_entities = AGS_ENTITY_TABLE[AGS_CIV_ENGLISH]
+		AGS_Print("AGS WARNING: no blueprint '" .. tostring(bp_type) .. "' for civ '" .. tostring(player_civ) .. "', falling back")
+		-- English covers the standard keys; Mongol covers the moving-building
+		-- keys; Abbasid covers house_of_wisdom. Together they cover every
+		-- blueprint key this mod uses.
+		if AGS_ENTITY_TABLE[AGS_CIV_ENGLISH][bp_type] ~= nil then
+			civ_entities = AGS_ENTITY_TABLE[AGS_CIV_ENGLISH]
+		elseif AGS_ENTITY_TABLE[AGS_CIV_MONGOL][bp_type] ~= nil then
+			civ_entities = AGS_ENTITY_TABLE[AGS_CIV_MONGOL]
+		else
+			civ_entities = AGS_ENTITY_TABLE[AGS_CIV_ABBASID]
+		end
 	end
 	return civ_entities[bp_type]
 end

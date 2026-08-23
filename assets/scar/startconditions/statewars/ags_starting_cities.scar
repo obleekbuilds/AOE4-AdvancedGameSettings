@@ -435,6 +435,15 @@ function AGS_StartingCities_DetermineSacredSites()
 			break
 		end
 	end
+	-- FORK FIX: maps larger than the biggest strategy entry matched nothing and
+	-- crashed below on a nil index; fall back to the largest defined strategy.
+	if size_strategy == nil then
+		for _, map_choice in pairs(AGS_STARTING_CITIES_STRATEGIES) do
+			if size_strategy == nil or map_choice.size > size_strategy.size then
+				size_strategy = map_choice
+			end
+		end
+	end
 	AGS_Print("DESIRED", size_strategy)
 	-- Calculate all spawning points, note if you are using crafted map you can replace it with markers
 	-- allowing you to spawn them where you want.
