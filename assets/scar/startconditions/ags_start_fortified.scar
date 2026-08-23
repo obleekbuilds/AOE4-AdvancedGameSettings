@@ -59,13 +59,19 @@ end
 -- Last time this was tested it would not work very well with stone walls.
 function AGS_Fortified_CreateWalls()
 	for _, player in pairs(PLAYERS) do
-		if player.raceName ~= AGS_CIV_MONGOL then
-			local palisade_blueprint = AGS_GetCivilizationEntity(player.raceName, AGS_BP_PALISADE)
-			local palisade_gate_blueprint = AGS_GetCivilizationEntity(player.raceName, AGS_BP_PALISADE_GATE)
-			local spawn_position = AGS_Starts_GetStartPosition(player.id)			
-			AGS_Fortified_WallAroundPosition(player, palisade_blueprint, palisade_gate_blueprint, spawn_position)
-		end		
-	end	
+		-- FORK FIX: every civ gets walls now (adapted from upstream PR #127).
+		-- Civs without their own palisade blueprints (Mongols, unknown future civs)
+		-- fall back to Rus palisades instead of being skipped.
+		local civ_entities = AGS_ENTITY_TABLE[player.raceName]
+		local wall_civ = player.raceName
+		if civ_entities == nil or civ_entities[AGS_BP_PALISADE] == nil or civ_entities[AGS_BP_PALISADE_GATE] == nil then
+			wall_civ = AGS_CIV_RUS
+		end
+		local palisade_blueprint = AGS_GetCivilizationEntity(wall_civ, AGS_BP_PALISADE)
+		local palisade_gate_blueprint = AGS_GetCivilizationEntity(wall_civ, AGS_BP_PALISADE_GATE)
+		local spawn_position = AGS_Starts_GetStartPosition(player.id)
+		AGS_Fortified_WallAroundPosition(player, palisade_blueprint, palisade_gate_blueprint, spawn_position)
+	end
 end
 
 function AGS_Fortified_WallAroundPosition(player, wall_bp, gate_bp, center_position)
