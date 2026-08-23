@@ -25,7 +25,13 @@ AGS_WONDER_SCALE_COST_RESOURCE_COUNT = {
 	sultanate = { total = 4, food = 1, wood = 1, gold = 1, stone = 1},
 	malian = { total = 4, food = 1, wood = 1, gold = 1, stone = 1},
 	ottoman = { total = 4, food = 1, wood = 1, gold = 1, stone = 1},
+	-- FORK FIX: Mongol variant shares the Mongol no-stone wonder cost split.
+	mongol_ha_gol = { total = 3, food = 1, wood = 1, gold = 1, stone = 0},
 }
+-- FORK FIX: default split for civs missing from the table above (all civs released
+-- after Ottomans use the standard four-resource wonder cost). Previously any such
+-- civ crashed the match on load when Wonder Scale Cost was enabled.
+AGS_WONDER_SCALE_COST_RESOURCE_COUNT_DEFAULT = { total = 4, food = 1, wood = 1, gold = 1, stone = 1}
 
 ---------------------------------------------------------------------------------------------------
 -- Delegates:
@@ -49,7 +55,11 @@ end
 ---------------------------------------------------------------------------------------------------
 
 function AGS_WonderScaleCost_CalculateCost(player, player_count)
+	-- FORK FIX: fall back to the standard split for civs missing from the table.
 	local civ_wonder_type = AGS_WONDER_SCALE_COST_RESOURCE_COUNT[player.raceName]
+	if civ_wonder_type == nil then
+		civ_wonder_type = AGS_WONDER_SCALE_COST_RESOURCE_COUNT_DEFAULT
+	end
 	-- This will calculate inflation value for single player.
 	local one_player_inflation = AGS_WONDER_SCALE_COST_RESOURCES_COUNT * AGS_GLOBAL_SETTINGS.WonderSettings.ScaleCost
 	-- Each player adds this inflation value
