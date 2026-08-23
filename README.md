@@ -27,6 +27,7 @@ and combines it with the remaining fixes so the mod runs without fatal SCAR erro
 
 See [CHANGES.md](CHANGES.md) for every modification with reasoning.
 Licensed under GPL-3.0, same as upstream — see [LICENSE.md](LICENSE.md).
+This fork's source lives at [obleekbuilds/AOE4-AdvancedGameSettings](https://github.com/obleekbuilds/AOE4-AdvancedGameSettings) (branch `maintained`).
 
 ---
 
