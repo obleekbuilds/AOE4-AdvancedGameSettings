@@ -80,7 +80,10 @@ function AGS_Objectives_Present(objective_id, state, title, title_param)
 	if state ~= nil then
 		Obj_SetState(objective_id, state)
 	end
-	Obj_CreatePopup(objective_id, formatted_title)	
+	-- FORK FIX: game patch changed Obj_CreatePopup to require 3 arguments (id, title, state).
+	-- Passing 2 caused "invalid number of arguments. expected: 3 received: 2" fatal SCAR errors.
+	-- Fix by grandoth (upstream PR #132, issue #130).
+	Obj_CreatePopup(objective_id, formatted_title, tostring(state))
 end
 
 function AGS_Objectives_SetColorProgress(objective, state, color, progress_percentage)
