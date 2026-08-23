@@ -1,4 +1,35 @@
-# Age of Empires IV - Advanced Game Settings
+# Age of Empires IV - Advanced Game Settings (Maintained Fork)
+
+This is a maintained fork of **Advanced Game Settings** by Woprok (Zlatý Bludišťák):
+[Woprok/AOE4-AdvancedGameSettings](https://github.com/Woprok/AOE4-AdvancedGameSettings).
+The original mod is no longer updated and fatally crashes on current game builds.
+This fork builds on [Joshua Sachtleben's fork](https://github.com/joshuasachtleben/AOE4-AdvancedGameSettings)
+(which adds all DLC civilizations through the Jin Dynasty and the match-start color crash fix)
+and combines it with the remaining fixes so the mod runs without fatal SCAR errors on the current patch.
+
+## What this fork changes
+
+* **Fixed the fatal SCAR error at treaty end / victory** — a game patch changed the
+  `Obj_CreatePopup` API to require 3 arguments. Fix authored by grandoth in
+  [upstream PR #132](https://github.com/Woprok/AOE4-AdvancedGameSettings/pull/132).
+* **Inherited from Joshua Sachtleben's fork** — all DLC civilizations up to the
+  Jin Dynasty (May 2026) and the guard for the match-start player-color crash.
+* **Fortified start now walls every civilization** — civs without their own palisade
+  blueprints (Mongols, or civs this mod does not know) use Rus palisades instead of
+  being skipped. Adapted from [upstream PR #127](https://github.com/Woprok/AOE4-AdvancedGameSettings/pull/127) by Levelleor.
+* **Hardened every per-civilization lookup table** — civilizations released after this
+  fork's last update now degrade gracefully (a feature skips or falls back to English/Rus
+  blueprints) instead of hard-crashing the match.
+* **Fixed five more pre-existing crash bugs found by a full audit** — Wonder Scale Cost
+  with post-Ottoman civs, Settled/Fortified spawns in Nomad mode, City-States
+  surrender/neutral-event crashes, Regicide wildlife-attacker crash, and oversized-map
+  City-States placement.
+
+See [CHANGES.md](CHANGES.md) for every modification with reasoning.
+Licensed under GPL-3.0, same as upstream — see [LICENSE.md](LICENSE.md).
+
+---
+
 Advanced Game Settings is a game mode for Age of Empires IV that provides new options for players to customize their games.
 
 ## Features:
