@@ -54,14 +54,18 @@ function AGS_TechnologyAge_UpgradePlayer(player_id, player_civ)
 end
 
 function AGS_TechnologyAge_DetermineUpgrades(player_id, player_civ, upgrades_age)
+	-- FORK FIX: a civ missing from the upgrade tables (newer DLC civ) gets only
+	-- the common upgrades instead of crashing on a nil table index.
+	local civ_corrections = AGS_UPGRADE_CORRECTION_TABLE[player_civ] or {}
+	local civ_upgrades = AGS_UPGRADE_TABLE[player_civ] or {}
 	-- Common upgrades are applied first.
-	if player_civ ~= AGS_CIV_SULTANATE then 
+	if player_civ ~= AGS_CIV_SULTANATE then
 		AGS_TechnologyAge_ApplyUpgradeList(player_id, AGS_UPGRADE_TABLE[AGS_UP_ANY][upgrades_age])
 		-- Remove upgrades that would conflict with unique civ upgrades.
-		AGS_TechnologyAge_RemoveUpgradeList(player_id, AGS_UPGRADE_CORRECTION_TABLE[player_civ])
-	end	
+		AGS_TechnologyAge_RemoveUpgradeList(player_id, civ_corrections)
+	end
 	-- Apply unique upgrades that each civ has.
-	AGS_TechnologyAge_ApplyUpgradeList(player_id, AGS_UPGRADE_TABLE[player_civ][upgrades_age])	
+	AGS_TechnologyAge_ApplyUpgradeList(player_id, civ_upgrades[upgrades_age] or {})
 end
 
 function AGS_TechnologyAge_ApplyUpgradeList(player_id, list)

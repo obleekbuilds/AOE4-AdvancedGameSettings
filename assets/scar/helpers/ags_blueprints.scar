@@ -1443,13 +1443,26 @@ AGS_UPGRADE_TABLE = {
 -- Functions:
 ---------------------------------------------------------------------------------------------------
 
+-- FORK FIX: resolve a civ blueprint name defensively. A civ missing from
+-- AGS_ENTITY_TABLE (released after this mod's last update) or missing the
+-- requested key falls back to the English entry instead of crashing on a
+-- nil table index. The match degrades cosmetically but keeps running.
+function AGS_ResolveCivilizationBlueprintName(player_civ, bp_type)
+	local civ_entities = AGS_ENTITY_TABLE[player_civ]
+	if civ_entities == nil or civ_entities[bp_type] == nil then
+		AGS_Print("AGS WARNING: no blueprint '" .. tostring(bp_type) .. "' for civ '" .. tostring(player_civ) .. "', falling back to english")
+		civ_entities = AGS_ENTITY_TABLE[AGS_CIV_ENGLISH]
+	end
+	return civ_entities[bp_type]
+end
+
 function AGS_GetCivilizationEntity(player_civ, bp_type)
-	return BP_GetEntityBlueprint(AGS_ENTITY_TABLE[player_civ][bp_type])
+	return BP_GetEntityBlueprint(AGS_ResolveCivilizationBlueprintName(player_civ, bp_type))
 end
 
 function AGS_GetCivilizationUnit(player_civ, bp_type)
 	AGS_Print(player_civ)
-	return BP_GetSquadBlueprint(AGS_ENTITY_TABLE[player_civ][bp_type])
+	return BP_GetSquadBlueprint(AGS_ResolveCivilizationBlueprintName(player_civ, bp_type))
 end
 
 function AGS_GetNeutralEntity(bp_type)

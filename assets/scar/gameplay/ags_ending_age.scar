@@ -56,7 +56,15 @@ end
 
 function AGS_EndingAge_SetMaximumAge(player, max_age)
 	local prefix = AGS_CIV_PREFIXES[player.raceName]
-	
+	-- FORK FIX: a civ missing from AGS_CIV_PREFIXES (newer DLC civ) has no known
+	-- menu names to restrict; keep the engine-side age cap and skip the rest
+	-- instead of crashing on a nil string concat.
+	if prefix == nil then
+		AGS_Print("AGS WARNING: no civ prefix for '" .. tostring(player.raceName) .. "', skipping menu restrictions")
+		Player_SetStateModelInt(player.id, "player_max_age", AGS_GLOBAL_SETTINGS.EndingAge)
+		return
+	end
+
 	if prefix == "ott_" then
 		prefix = "sul_"
 		-- This is here due to ottomans not having their own, but they are using other civ
