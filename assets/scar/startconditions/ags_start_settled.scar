@@ -64,7 +64,11 @@ end
 
 -- Setup for customized settled spawn.
 function AGS_Settled_CreateSpawn()
-	for _, player in pairs(PLAYERS) do	
+	for _, player in pairs(PLAYERS) do
+		-- FORK FIX: player_civ was never defined here (nil global), so every spawn
+		-- helper below received nil as the civ and crashed or spawned wrong units.
+		-- Reachable via Nomad game mode with Settled/Fortified settlement.
+		local player_civ = player.raceName
 		if player.raceName == AGS_CIV_MONGOL then
 			AGS_Settled_SpawnMovingTownCenter(player.id, player_civ)
 		else
