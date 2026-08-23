@@ -102,6 +102,56 @@ Listed for completeness, since the original mod lacks them:
   color palette again, color enforcement silently does nothing for those players —
   but the match keeps running.)
 
+## 6. Entity table audit against real game data
+
+**File:** `assets/scar/helpers/ags_blueprints.scar` (`AGS_ENTITY_TABLE`)
+
+Triggered by an in-game fatal SCAR error: a Templar player with the Fortified
+settlement setting crashed on `Cannot find "building_defense_palisade_tem"` —
+the real blueprint is `building_defense_palisade_wall_tem`. The entity-table
+blocks inherited for the newer civilizations (section 5) were built by
+copy-pasting an older civ's block and guessing the suffix, so the fallback
+hardening from section 3 never fires: the table key *exists*, it just names a
+blueprint that doesn't. Every such fetch is a fatal SCAR error.
+
+All ~1,100 blueprint names referenced by the mod were extracted and checked
+against the name tables of the game's data archives (`Attrib.sga`, `Xp3Data.sga`,
+`Data.sga`, campaign archives, `ReferenceAttributes.sga`). 97 names did not
+exist — every one in the blocks for Japanese, Sengoku Daimyo, Byzantine,
+Macedonian dynasty, Jin, Lancaster, Templar, Golden Horde, and the campaign
+Ayyubid/Crusader civs. Any AGS option touching those entries (Fortified start,
+Early Market, No Dock, Starting Keep, statewars starting cities, Regicide king
+spawn, ...) crashed for those civs. Fixes, each verified to exist in the
+archives:
+
+* **Templar** — real names verified: fortress (their keep), `building_market_tem`,
+  `building_barracks_tem`, `building_stable_tem`, `building_archery_range_tem`,
+  `building_siege_workshop_tem`, `building_dock_tem`, `building_monastery_tem`,
+  `building_tech_blacksmith_tem`, palisade wall.
+* **Jin** — uses `building_<name>_<age>_jin` naming (`building_keep_3_jin`,
+  `building_barracks_1_jin`, ...). Their Machine Workshop replaces both the
+  archery range and siege workshop, so both keys point at
+  `building_machine_workshop_2_jin`.
+* **Lancaster** — `building_unit_barracks_lan`-style names, `building_tech_blacksmith_lan`.
+* **Japanese / Sengoku Daimyo** — dropped the guessed `_control` infix; monks are
+  `unit_monk_buddhist_3_jpn` / `unit_monk_ikko_3_jpn_ha_sen`; monastery is the
+  Buddhist temple; the blacksmith key maps to the Forge, which replaces the
+  Mining Camp + Blacksmith (`building_econ_mining_camp_jpn`).
+* **Byzantine / Macedonian dynasty** — monk is `unit_monk_2_byz`, not `_3_`; the
+  copy-pasted English `town_center_landmark` (Westminster) entries were dropped.
+* **Golden Horde** — keep is the same borrowed `building_defense_keep_control_nov`
+  base Mongols use; scout is `unit_scout_1_mon_ha_gol` (this variant has a real
+  tier-1 scout — its Khan starts at tier 2); outpost is their Fortified Outpost;
+  the nonexistent packed-TC/packed-house entries were dropped (resolver falls
+  back to base Mongol).
+* **Campaign Ayyubid / Crusader** — names drop `_control` and unit tier numbers
+  (`unit_villager_ayy`, `unit_monk_cru`, ...); neither civ has a king unit, so
+  the `king` keys were removed and Regicide falls back through the resolver.
+
+Keys a civ genuinely lacks are now *omitted* (not guessed) so the section 3
+fallback chain handles them. After the fix, a re-run of the archive sweep finds
+zero referenced blueprint names missing from game data.
+
 ## Known limitations
 
 * The color-to-slot table (`ags_color_maintainer.scar`) and all civ tables are still
