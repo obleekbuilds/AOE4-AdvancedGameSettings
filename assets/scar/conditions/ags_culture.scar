@@ -58,6 +58,9 @@ end
 function AGS_Culture_OnPlay()
 	AGS_Print("AGS_Culture_OnPlay")
 	AGS_Culture_CreateSiteData()
+	-- FORK FIX: Treaty broadcasts TreatyStarted before this OnPlay runs, while the site
+	-- table was still empty; re-apply the current treaty state now that sites exist.
+	AGS_Culture_EnableSacredSitesCapture(AGS_CULTURE_ACTIVE)
 	Rule_AddGlobalEvent(AGS_Culture_OnStrategicPointChanged, GE_StrategicPointChanged)
 	AGS_Culture_CreateObjective()
 	AGS_Culture_UpdateObjective()
@@ -264,14 +267,20 @@ function AGS_Culture_HolySiteMinimapBlips()
 	end
 end
 -- Change site flashing on or off.
+-- FORK FIX: guard start and stop independently like the base game; previously a second
+-- flashing=true call fell into the else branch, stopping the flash and leaving is_flashing=true.
 function AGS_Culture_SetSiteFlash(site, flashing)
-	if flashing and not site.flash then		
-		site.flash = UI_FlashObjectiveIcon(site.objective, true)
-		UI_SetEntityDataContext(site.entity, {is_flashing = flashing})		
+	if flashing then
+		if not site.flash then
+			site.flash = UI_FlashObjectiveIcon(site.objective, true)
+			UI_SetEntityDataContext(site.entity, {is_flashing = true})
+		end
 	else
-		UI_StopFlashing(site.flash)
-		site.flash = nil
-		UI_SetEntityDataContext(site.entity, {is_flashing = flashing})		
+		if site.flash then
+			UI_StopFlashing(site.flash)
+			site.flash = nil
+		end
+		UI_SetEntityDataContext(site.entity, {is_flashing = false})
 	end
 end
 -- Determines if selected holy site position has monks nearby.
@@ -297,10 +306,12 @@ function AGS_Culture_OnHolySiteChange(context)
 	local instigating_player = nil
 	if context.instigatorSquad ~= nil then
 		-- FORK FIX: world-owned squads (e.g. after a surrender) have no player owner;
-		-- skip the event instead of crashing. Mirrors ags_religious.scar.
+		-- skip the event instead of crashing — but only for change types whose
+		-- handlers need an instigating player. Types 6/7/11 are instigator-free
+		-- (flash cleanup); returning left sites flashing. Mirrors ags_religious.scar.
 		if not World_OwnsSquad(context.instigatorSquad) then
 			instigating_player = Core_GetPlayersTableEntry(Squad_GetPlayerOwner(context.instigatorSquad))
-		else
+		elseif context.changeType ~= 6 and context.changeType ~= 7 and context.changeType ~= 11 then
 			return
 		end
 	end
@@ -376,15 +387,22 @@ end
 
 function AGS_Culture_OnHolySiteChangeTypeContested(instigating_player, site_entity_id, holy_site_progress, holy_site_pos)	
 	if holy_site_progress ~= 0 then
-		local selected_relation = AGS_SAE_ALLY
+		-- FORK FIX: relation is derived from the instigator instead of defaulting to ALLY;
+		-- enemy-vs-enemy contests in FFA/multi-team games show no cue, matching the base game.
+		local selected_relation = nil
 		-- positive progress is bad for us as enemy is taking it
 		if holy_site_progress > 0 then
 			selected_relation = AGS_SAE_ENEMY
 		-- negative progress is bad for enemy as local and his ally is taking it
-		elseif holy_site_progress < 0 and instigating_player == AGS_GS_LOCAL_PLAYER then
-			selected_relation = AGS_SAE_SELF
+		elseif holy_site_progress < 0 then
+			selected_relation = AGS_GetRelation(instigating_player)
+			if selected_relation == AGS_SAE_ENEMY then
+				selected_relation = nil
+			end
 		end
-		AGS_Notifications_ObjectiveActionSelectable(instigating_player, AGS_NOTIFICATIONS_CULTURE_CONTESTING,	selected_relation)	
+		if selected_relation ~= nil then
+			AGS_Notifications_ObjectiveActionSelectable(instigating_player, AGS_NOTIFICATIONS_CULTURE_CONTESTING,	selected_relation)
+		end
 	end
 	for _, site in pairs(AGS_CULTURE_SACRED_SITE_OBJECTIVES) do
 		if site.entity == site_entity_id then
@@ -405,16 +423,23 @@ function AGS_Culture_OnHolySiteChangeTypeNeutralized(instigating_player, site_en
 	-- If no players have monks in range of Holy Site (note: this ensures that the neutralized/lost 
 	-- cues do not overlap with the capture started cues if an enemy Monk is in range)
 	if not AGS_Culture_HasContestingMonk(holy_site_pos) then
-		local selected_relation = AGS_SAE_ALLY
+		-- FORK FIX: relation is derived from owner/instigator instead of defaulting to ALLY;
+		-- an enemy liberating another enemy's site shows no cue, matching the base game.
 		local is_owner_relation = AGS_GetRelation(Core_GetPlayersTableEntry(owning_player))
+		local selected_relation = nil
 		-- Owner side gets this
 		if is_owner_relation ~= AGS_SAE_ENEMY then
 			selected_relation = AGS_SAE_ENEMY
-		-- Local instigator gets this
-		elseif instigating_player == AGS_GS_LOCAL_PLAYER then
-			selected_relation = AGS_SAE_SELF
+		-- Self or ally instigator gets this
+		else
+			local instigator_relation = AGS_GetRelation(instigating_player)
+			if instigator_relation ~= AGS_SAE_ENEMY then
+				selected_relation = instigator_relation
+			end
 		end
-		AGS_Notifications_ObjectiveActionSelectable(instigating_player, AGS_NOTIFICATIONS_CULTURE_NEUTRALIZED, selected_relation)
+		if selected_relation ~= nil then
+			AGS_Notifications_ObjectiveActionSelectable(instigating_player, AGS_NOTIFICATIONS_CULTURE_NEUTRALIZED, selected_relation)
+		end
 	end
 	
 	-- Trigger a blip that matches colour of instigator

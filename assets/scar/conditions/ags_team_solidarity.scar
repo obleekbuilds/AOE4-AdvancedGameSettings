@@ -94,13 +94,15 @@ function AGS_TeamSolidarity_Enforce(defeated_teammate)
 end
 
 function AGS_TeamSolidarity_Eliminate(ally, defeated_teammate)
+	-- FORK FIX: 'owner' was an undefined global (nil), so AGS_GetCurrentName(nil) fatal-errored
+	-- on every solidarity elimination; title_lost names the defeated teammate we failed to protect.
 	AGS_SetPlayerDefeated(
-		ally.id, 
-		AGS_Presentations_Loss, 
+		ally.id,
+		AGS_Presentations_Loss,
 		AGS_WR_TEAM_SOLIDARITY,
 		AGS_Objectives_PresentWrap(
-			AGS_TEAM_SOLIDARITY_OBJECTIVE, 
-			OS_Failed, 
-			AGS_OBJECTIVES_TEAMSOLIDARITY.title_lost, 
-			AGS_GetCurrentName(owner)))
+			AGS_TEAM_SOLIDARITY_OBJECTIVE,
+			OS_Failed,
+			AGS_OBJECTIVES_TEAMSOLIDARITY.title_lost,
+			AGS_GetCurrentName(defeated_teammate)))
 end

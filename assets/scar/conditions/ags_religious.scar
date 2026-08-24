@@ -62,6 +62,9 @@ end
 function AGS_Religious_OnPlay()
 	AGS_Print("AGS_Religious_OnPlay")
 	AGS_Religious_InitializeSacredSites()
+	-- FORK FIX: Treaty's TreatyStarted fires before this OnPlay populates the site table, so its
+	-- capture-disable hit zero sites; re-apply the already-broadcast treaty state now that sites exist.
+	AGS_Religious_EnableSacredSitesCapture(AGS_RELIGIOUS_ACTIVE)
 	Rule_AddGlobalEvent(AGS_Religious_OnStrategicPointChanged, GE_StrategicPointChanged)
 	AGS_Religious_CreateObjective()
 	AGS_Religious_UpdateObjective()
@@ -426,13 +429,15 @@ function AGS_Religious_FlashAllHolySites()
 end
 -- Change site flashing on or off.
 function AGS_Religious_SetSiteFlash(site, flashing)
-	if flashing and not site.flash then		
+	-- FORK FIX: the old bare else killed an already-running flash when asked to flash again
+	-- (strobing/false stops); guard both directions like the base game does.
+	if flashing and not site.flash then
 		site.flash = UI_FlashObjectiveIcon(site.objective, true)
-		UI_SetEntityDataContext(site.entity, {is_flashing = flashing})		
-	else
+		UI_SetEntityDataContext(site.entity, {is_flashing = flashing})
+	elseif not flashing and site.flash then
 		UI_StopFlashing(site.flash)
 		site.flash = nil
-		UI_SetEntityDataContext(site.entity, {is_flashing = flashing})		
+		UI_SetEntityDataContext(site.entity, {is_flashing = flashing})
 	end
 end
 -- Determines if selected holy site position has monks nearby.
@@ -455,12 +460,16 @@ function AGS_Religious_OnHolySiteChange(context)
 	-- Get Holy Site progress - 0 to 1 for player/allies, 0 to -1 for enemies
 	local holy_site_progress = Player_GetStrategicPointCaptureProgress(AGS_GS_LOCAL_PLAYER.id, context.strategicPointEntity)
 	-- Get instigating player
-	local instigating_player = nil 
+	local instigating_player = nil
 	if context.instigatorSquad ~= nil then
 		-- This checks verifies that squad is owned by player, e.g. in case of surrender to avoid crash.
 		if not World_OwnsSquad(context.instigatorSquad) then
 			instigating_player = Core_GetPlayersTableEntry(Squad_GetPlayerOwner(context.instigatorSquad))
-		else
+		elseif context.changeType ~= 6 and context.changeType ~= 7 and context.changeType ~= 11 then
+			-- FORK FIX: only bail on the change types whose handlers need an
+			-- instigating player. Types 6/7/11 are instigator-free (they resume
+			-- the paused victory timer and clear site flashing); returning here
+			-- left the countdown paused and sites flashing forever.
 			return
 		end
 	end
@@ -514,8 +523,10 @@ function AGS_Religious_OnHolySiteChangeTypeResume(site_entity_id)
 		end
 	end
 	if Timer_Exists(AGS_RELIGIOUS_TIMER) then
-		Timer_Resume(AGS_RELIGIOUS_TIMER)
-	end		
+		-- FORK FIX: Timer_Pause/Resume are ref-counted and pauses can outnumber resumes here
+		-- (multiple CT 8/10 per contest, one CT 7); base game forces this resume, so match it.
+		Timer_Resume(AGS_RELIGIOUS_TIMER, true)
+	end
 end
 
 function AGS_Religious_OnHolySiteChangeTypeCooldown(site_entity_id)
@@ -561,15 +572,22 @@ function AGS_Religious_OnHolySiteChangeTypeContested(instigating_player, site_en
 	end		
 	
 	if holy_site_progress ~= 0 then
-		local selected_relation = AGS_SAE_ALLY
+		-- FORK FIX: in FFA/3+ team games an enemy halting another enemy's progress fell through
+		-- to the ALLY default ("Ally contesting"); cue only self/ally instigators, like base game.
+		local selected_relation = nil
 		-- positive progress is bad for us as enemy is taking it
 		if holy_site_progress > 0 then
 			selected_relation = AGS_SAE_ENEMY
 		-- negative progress is bad for enemy as local and his ally is taking it
-		elseif holy_site_progress < 0 and instigating_player == AGS_GS_LOCAL_PLAYER then
-			selected_relation = AGS_SAE_SELF
+		else
+			local instigator_relation = AGS_GetRelation(instigating_player)
+			if instigator_relation ~= AGS_SAE_ENEMY then
+				selected_relation = instigator_relation
+			end
 		end
-		AGS_Notifications_ObjectiveActionSelectable(instigating_player, AGS_NOTIFICATIONS_RELIGIOUS_CONTESTING,	selected_relation)	
+		if selected_relation ~= nil then
+			AGS_Notifications_ObjectiveActionSelectable(instigating_player, AGS_NOTIFICATIONS_RELIGIOUS_CONTESTING,	selected_relation)
+		end
 	end
 	for _, site in pairs(AGS_RELIGIOUS_SACRED_SITE_OBJECTIVES) do
 		if site.entity == site_entity_id then
@@ -590,16 +608,23 @@ function AGS_Religious_OnHolySiteChangeTypeNeutralized(instigating_player, site_
 	-- If no players have monks in range of Holy Site (note: this ensures that the neutralized/lost 
 	-- cues do not overlap with the capture started cues if an enemy Monk is in range)
 	if not AGS_Religious_HasContestingMonk(holy_site_pos) then
-		local selected_relation = AGS_SAE_ALLY
+		-- FORK FIX: in FFA/3+ team games an enemy neutralizing another enemy's site fell through
+		-- to the ALLY default ("Ally neutralized"); cue only owner-side loss or self/ally instigators.
+		local selected_relation = nil
 		local is_owner_relation = AGS_GetRelation(Core_GetPlayersTableEntry(owning_player))
 		-- Owner side gets this
 		if is_owner_relation ~= AGS_SAE_ENEMY then
 			selected_relation = AGS_SAE_ENEMY
-		-- Local instigator gets this
-		elseif instigating_player == AGS_GS_LOCAL_PLAYER then
-			selected_relation = AGS_SAE_SELF
+		-- Local and allied instigators get this
+		else
+			local instigator_relation = AGS_GetRelation(instigating_player)
+			if instigator_relation ~= AGS_SAE_ENEMY then
+				selected_relation = instigator_relation
+			end
 		end
-		AGS_Notifications_ObjectiveActionSelectable(instigating_player, AGS_NOTIFICATIONS_RELIGIOUS_NEUTRALIZED, selected_relation)
+		if selected_relation ~= nil then
+			AGS_Notifications_ObjectiveActionSelectable(instigating_player, AGS_NOTIFICATIONS_RELIGIOUS_NEUTRALIZED, selected_relation)
+		end
 	end
 	
 	-- Trigger a blip that matches colour of instigator
@@ -619,9 +644,10 @@ function AGS_Religious_OnHolySiteChangeTypeNeutralizing(instigating_player, site
 		-- For self or ally instigation do this
 		if instigator_relation ~= AGS_SAE_ENEMY then
 			AGS_Notifications_ObjectiveActionSelectable(instigating_player, AGS_NOTIFICATIONS_RELIGIOUS_NEUTRALIZING, instigator_relation)
-		-- For enemy owner do this
-		elseif is_owner_relation == AGS_SAE_SELF then 
-			AGS_Notifications_ObjectiveActionSelectable(instigating_player, AGS_NOTIFICATIONS_RELIGIOUS_NEUTRALIZING, AGS_SAE_SELF)
+		-- FORK FIX: an enemy reverting a site owned by us OR an ally must fire the enemy-variant
+		-- cue (base-game parity); the old branch fired the self-action cue and skipped ally-owned sites.
+		elseif is_owner_relation ~= AGS_SAE_ENEMY then
+			AGS_Notifications_ObjectiveActionSelectable(instigating_player, AGS_NOTIFICATIONS_RELIGIOUS_NEUTRALIZING, AGS_SAE_ENEMY)
 		end
 	end	
 	

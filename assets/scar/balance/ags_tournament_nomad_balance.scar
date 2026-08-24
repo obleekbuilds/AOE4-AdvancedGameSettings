@@ -6,10 +6,10 @@
 --
 -- Description:
 -- Nomad tournament adjustments.
--- Mongols: +100 Wood
+-- Mongols (incl. Golden Horde): +100 Wood
 -- English: +50 Wood
 -- Ottomans: +50 Stone +50 Wood
--- Chinese: Main TC build time +100%
+-- Chinese (incl. Zhu Xi's Legacy): Main TC build time +100%
 -- All: Outpost only after first TC built.
 ---------------------------------------------------------------------------------------------------
 
@@ -76,7 +76,9 @@ end
 function AGS_TournamentNomadBalance_ApplyBalance()
 	for _, player in pairs(PLAYERS) do			
 		-- Increase starting resources based on what is missing from "low"
-		if player.raceName == AGS_CIV_MONGOL then
+		-- FORK FIX: variant civs carry their own raceName; Golden Horde shares the nomadic
+		-- start so it needs the same compensation as base Mongols.
+		if player.raceName == AGS_CIV_MONGOL or player.raceName == AGS_CIV_MONGOL_HA_GOL then
 			Player_GiftResource(player.id, RT_Wood, AGS_TOURNAMENT_NOMAD_BALANCE_MONGOL_WOOD)
 		end
 		
@@ -89,7 +91,9 @@ function AGS_TournamentNomadBalance_ApplyBalance()
 			Player_GiftResource(player.id, RT_Wood, AGS_TOURNAMENT_NOMAD_BALANCE_OTTOMAN_WOOD)
 		end
 		
-		if player.raceName == AGS_CIV_CHINESE then
+		-- FORK FIX: Zhu Xi's Legacy shares the Chinese fast-construction mechanic, so it
+		-- needs the same TC build time nerf as base Chinese.
+		if player.raceName == AGS_CIV_CHINESE or player.raceName == AGS_CIV_CHINESE_HA_01 then
 			-- Nerf TC build time
 			local ebp = AGS_GetCivilizationEntity(player.raceName, AGS_BP_TC_CAPITAL)
 			AGS_TournamentNomadBalance_Nerf(player.id, "cost_ticks_modifier", 2, ebp)

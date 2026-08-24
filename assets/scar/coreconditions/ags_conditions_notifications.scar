@@ -41,13 +41,15 @@ AGS_NOTIFICATIONS_CORE = {
 }
 -- Points during countdown at which to display loss warning.
 -- Arrange in decreasing order since music intensity increases when the last one triggers.
+-- FORK FIX: key was misspelled 'music_intesity_param' while the reader uses
+-- 'music_intensity_param', so Music_LockIntensity always got a nil duration.
 AGS_NOTIFICATIONS_COUNTDOWN = {
 	-- generic first
 	{
 		time = 3 * 60, 
 		sfx = "sfx_ui_victory_countdown_update_first",
 		music_intensity = MUSIC_TENSE,
-		music_intesity_param = -1,
+		music_intensity_param = -1,
 		music_special = nil,
 		text_param = 3,		
 	},
@@ -56,7 +58,7 @@ AGS_NOTIFICATIONS_COUNTDOWN = {
 		time = 2 * 60, 
 		sfx = "sfx_ui_victory_countdown_update_second",
 		music_intensity = MUSIC_TENSE_COMBAT_RARE,	
-		music_intesity_param = -1,	
+		music_intensity_param = -1,	
 		music_special = nil,
 		text_param = 2,		
 	},
@@ -65,7 +67,7 @@ AGS_NOTIFICATIONS_COUNTDOWN = {
 		time = 1 * 60,
 		sfx = "sfx_ui_victory_countdown_update_final",	
 		music_intensity = MUSIC_RARE,		
-		music_intesity_param = 1 * 60,
+		music_intensity_param = 1 * 60,
 		music_special = "mus_shared_victory_countdown_mix_event",	
 		text_param = nil,					
 	},

@@ -80,10 +80,11 @@ function AGS_Objectives_Present(objective_id, state, title, title_param)
 	if state ~= nil then
 		Obj_SetState(objective_id, state)
 	end
-	-- FORK FIX: game patch changed Obj_CreatePopup to require 3 arguments (id, title, state).
-	-- Passing 2 caused "invalid number of arguments. expected: 3 received: 2" fatal SCAR errors.
-	-- Fix by grandoth (upstream PR #132, issue #130).
-	Obj_CreatePopup(objective_id, formatted_title, tostring(state))
+	-- FORK FIX: game patch changed Obj_CreatePopup to require 3 arguments. The third
+	-- is a data-template OVERRIDE (scardocs), not a state; every base-game call
+	-- passes "". State is already applied via Obj_SetState above.
+	-- (Arg-count fix by grandoth, upstream PR #132, issue #130.)
+	Obj_CreatePopup(objective_id, formatted_title, "")
 end
 
 function AGS_Objectives_SetColorProgress(objective, state, color, progress_percentage)
@@ -123,7 +124,10 @@ end
 -- Counter is either COUNTER_TimerDecreasing or COUNTER_CountUpTo
 function AGS_Objectives_Set(objective, state, visibility, progress, counter)
 	if objective == nil then
+		-- FORK FIX: actually degrade — falling through passed nil into Obj_Set*
+		-- which is a fatal engine error, defeating this sentinel's purpose.
 		AGS_Print("AGS: OBJECTIVE WAS NOT DEFINED!")
+		return
 	end
 	-- Current state of an objective.
 	if state ~= nil then
@@ -158,7 +162,9 @@ end
 function AGS_Objectives_Create(objective_data, player, title_param, parent)
 	-- Select proper template to display objective.
 	local template = objective_data.data_template
-	if AGS_Conditions_IsPrimary(objective_data.reason) then
+	-- FORK FIX: condition was inverted; base game uses the "OR" template only for conditions
+	-- that are NOT the first primary in the objective list (see base religious/wonder scripts).
+	if not AGS_Conditions_IsPrimary(objective_data.reason) then
 		template = objective_data.data_template_or
 	end
 	-- Format title with a paramter.
@@ -176,7 +182,9 @@ end
 
 function AGS_Objectives_GetCurrentState(objective)
 	if objective == nil then
+		-- FORK FIX: actually degrade — Obj_GetState(nil) is a fatal engine error.
 		AGS_Print("AGS: OBJECTIVE WAS NOT DEFINED!")
+		return nil
 	end
 	return Obj_GetState(objective)
 end

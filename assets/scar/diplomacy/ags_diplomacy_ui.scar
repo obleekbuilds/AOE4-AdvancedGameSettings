@@ -807,7 +807,9 @@ function Diplomacy_UpdateDataContext()
 				resource.is_enabled = _diplomacy.data_context.is_tribute_enabled
 					and not context_player.is_eliminated
 					and not context_player.is_enemy  -- TODO: When diplomacy works replace with:  Player_ObserveRelationship(player_local.id, Core_GetPlayersTableEntryFromIndex(context_player.player_index).id) ~= R_ENEMY
-					and not (_diplomacy.resources[j].resource_type == RT_Stone and Core_GetPlayersTableEntryFromIndex(context_player.player_index).race == RACE.MONGOL)					
+					-- FORK FIX: the Golden Horde variant civ (RACE.MONGOL_HA_GOL) also cannot use stone,
+					-- matching the current base-game diplomacy.scar; nil RACE key would just compare false.
+					and not (_diplomacy.resources[j].resource_type == RT_Stone and (Core_GetPlayersTableEntryFromIndex(context_player.player_index).race == RACE.MONGOL or Core_GetPlayersTableEntryFromIndex(context_player.player_index).race == RACE.MONGOL_HA_GOL))
 					and not underMinTribute
 			
 				-- Update requirements
@@ -819,6 +821,9 @@ function Diplomacy_UpdateDataContext()
 					resource.tooltip.requirements = Loc_GetString(11165017)		--"Requires: Not hostile"
 				elseif (_diplomacy.resources[j].resource_type == RT_Stone and Core_GetPlayersTableEntryFromIndex(context_player.player_index).race == RACE.MONGOL) then
 					resource.tooltip.requirements = Loc_GetString(11165018)		--"Requires: Not Mongol"
+				-- FORK FIX: tooltip for the Golden Horde stone exclusion, mirroring base-game diplomacy.scar.
+				elseif (_diplomacy.resources[j].resource_type == RT_Stone and Core_GetPlayersTableEntryFromIndex(context_player.player_index).race == RACE.MONGOL_HA_GOL) then
+					resource.tooltip.requirements = Loc_GetString(11269486)		--"Requires: Not Golden Horde"
 				--elseif not _diplomacy.tribute.is_age_2 and not _diplomacy.tribute.is_market_built then 
 				--	resource.tooltip.requirements = Loc_GetString(11165019)		-- "Requires: Progress to Age II and a Market"
 				elseif --[[_diplomacy.tribute.is_age_2 and]]  not _diplomacy.tribute.is_market_built then

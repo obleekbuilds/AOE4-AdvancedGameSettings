@@ -26,6 +26,26 @@ AGS_ENDING_AGE_ABB_MW_IMPERIAL = BP_GetUpgradeBlueprint("upgrade_add_economy_win
 AGS_ENDING_AGE_ABB_CW_IMPERIAL = BP_GetUpgradeBlueprint("upgrade_add_military_wing_imperial")
 AGS_ENDING_AGE_ABB_TW_IMPERIAL = BP_GetUpgradeBlueprint("upgrade_add_trade_wing_imperial")
 
+-- FORK FIX: wing upgrades grouped per tier so base Abbasid and the Ayyubid variant
+-- (abbasid_ha_01, which ages up via its own wing blueprint family) share the removal logic.
+AGS_ENDING_AGE_ABB_WINGS = {
+	dark = { AGS_ENDING_AGE_ABB_EW_DARK, AGS_ENDING_AGE_ABB_MW_DARK, AGS_ENDING_AGE_ABB_CW_DARK, AGS_ENDING_AGE_ABB_TW_DARK },
+	feudal = { AGS_ENDING_AGE_ABB_EW_FEUDAL, AGS_ENDING_AGE_ABB_MW_FEUDAL, AGS_ENDING_AGE_ABB_CW_FEUDAL, AGS_ENDING_AGE_ABB_TW_FEUDAL },
+	castle = { AGS_ENDING_AGE_ABB_EW_CASTLE, AGS_ENDING_AGE_ABB_MW_CASTLE, AGS_ENDING_AGE_ABB_CW_CASTLE, AGS_ENDING_AGE_ABB_TW_CASTLE },
+	imperial = { AGS_ENDING_AGE_ABB_EW_IMPERIAL, AGS_ENDING_AGE_ABB_MW_IMPERIAL, AGS_ENDING_AGE_ABB_CW_IMPERIAL, AGS_ENDING_AGE_ABB_TW_IMPERIAL },
+}
+-- FORK FIX: abbasid_ha_01 wing family (upgrade_add_*_wing_<age>_{a,b}_abb_ha_01), resolved
+-- lazily by AGS_EndingAge_GetAyyubidWings so a data rename degrades instead of fatal-erroring.
+AGS_ENDING_AGE_ABB_HA_01_WINGS = nil
+-- FORK FIX: <prefix>age3/age4 and <prefix>ageN_wonders construction-menu tokens exist in game
+-- data only for these prefixes; other civs (jin, lancaster, templar, *_ha_* variants,
+-- ayyubid_cmp) have none, so they must degrade to the player_max_age cap.
+AGS_ENDING_AGE_MENU_PREFIXES = {
+	["byz_"] = true, ["chi_"] = true, ["cru_"] = true, ["eng_"] = true, ["fre_"] = true,
+	["hre_"] = true, ["jpn_"] = true, ["mal_"] = true, ["mon_"] = true, ["rus_"] = true,
+	["sul_"] = true,
+}
+
 ---------------------------------------------------------------------------------------------------
 -- Delegates:
 ---------------------------------------------------------------------------------------------------
@@ -72,10 +92,15 @@ function AGS_EndingAge_SetMaximumAge(player, max_age)
 		AGS_Print(prefix)
 	end
 	
-	if player.raceName == AGS_CIV_ABBASID then
+	-- FORK FIX: abbasid_ha_01 (Ayyubids) also ages up via wing upgrades, not landmark menus.
+	if player.raceName == AGS_CIV_ABBASID or player.raceName == AGS_CIV_ABBASID_HA_01 then
 		AGS_EndingAge_RemoveAgeTechnology(player, prefix, max_age)
+	-- FORK FIX: civs without real ageN/ageN_wonders menu tokens would target nonexistent
+	-- names (silent no-op at best); keep the engine-side age cap below and skip the calls.
+	elseif AGS_ENDING_AGE_MENU_PREFIXES[prefix] == nil then
+		AGS_Print("AGS WARNING: no construction menus for prefix '" .. prefix .. "', relying on player_max_age only")
 	else
-		if max_age < AGS_GS_AGE_FEUDAL then 
+		if max_age < AGS_GS_AGE_FEUDAL then
 			-- This is commented due to TC availability for nomad...
 			--Player_SetConstructionMenuAvailability(player.id, prefix.."age2", ITEM_REMOVED)
 			Player_SetConstructionMenuAvailability(player.id, prefix.."age1_wonders", ITEM_REMOVED)
@@ -94,31 +119,64 @@ function AGS_EndingAge_SetMaximumAge(player, max_age)
 end
 
 function AGS_EndingAge_RemoveAgeTechnology(player, prefix, final_age)
+	-- FORK FIX: pick the wing family per civ; abbasid_ha_01 has its own wing blueprints
+	-- and no abb_ha_01_* construction menus, so menu removals stay base-Abbasid only.
+	local is_base_abbasid = player.raceName == AGS_CIV_ABBASID
+	local wings = AGS_ENDING_AGE_ABB_WINGS
+	if not is_base_abbasid then
+		wings = AGS_EndingAge_GetAyyubidWings()
+	end
 	if final_age <= AGS_GS_AGE_DARK then
 		Player_SetEntityProductionAvailability(player.id, AGS_GetCivilizationEntity(player.raceName, AGS_BP_HOW), ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_EW_DARK, ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_MW_DARK, ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_CW_DARK, ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_TW_DARK, ITEM_REMOVED)
+		AGS_EndingAge_RemoveWingTier(player, wings, "dark")
 	end
 	if final_age <= AGS_GS_AGE_FEUDAL then
-		Player_SetConstructionMenuAvailability(player.id, prefix.."age3", ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_EW_FEUDAL, ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_MW_FEUDAL, ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_CW_FEUDAL, ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_TW_FEUDAL, ITEM_REMOVED)
+		if is_base_abbasid then
+			Player_SetConstructionMenuAvailability(player.id, prefix.."age3", ITEM_REMOVED)
+		end
+		AGS_EndingAge_RemoveWingTier(player, wings, "feudal")
 	end
 	if final_age <= AGS_GS_AGE_CASTLE then
-		Player_SetConstructionMenuAvailability(player.id, prefix.."age4", ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_EW_CASTLE, ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_MW_CASTLE, ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_CW_CASTLE, ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_TW_CASTLE, ITEM_REMOVED)
+		if is_base_abbasid then
+			Player_SetConstructionMenuAvailability(player.id, prefix.."age4", ITEM_REMOVED)
+		end
+		AGS_EndingAge_RemoveWingTier(player, wings, "castle")
+		-- FORK FIX: imperial-tier wings are researched IN Imperial (Relic removes them only
+		-- when the cap is below Imperial); removing them at cap == Imperial was an off-by-one
+		-- that stripped Abbasid content no other civ lost.
+		AGS_EndingAge_RemoveWingTier(player, wings, "imperial")
 	end
-	if final_age <= AGS_GS_AGE_IMPERIAL then
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_EW_IMPERIAL, ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_MW_IMPERIAL, ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_CW_IMPERIAL, ITEM_REMOVED)
-		Player_SetUpgradeAvailability(player.id, AGS_ENDING_AGE_ABB_TW_IMPERIAL, ITEM_REMOVED)
+end
+
+function AGS_EndingAge_RemoveWingTier(player, wings, age)
+	if wings == nil then
+		return
 	end
+	for _, wing_upgrade in pairs(wings[age]) do
+		Player_SetUpgradeAvailability(player.id, wing_upgrade, ITEM_REMOVED)
+	end
+end
+
+-- FORK FIX: resolve the abbasid_ha_01 wing upgrades on first use, pcall-guarded so a
+-- missing blueprint degrades to a warning (no wing removal) instead of a fatal error.
+function AGS_EndingAge_GetAyyubidWings()
+	if AGS_ENDING_AGE_ABB_HA_01_WINGS ~= nil then
+		return AGS_ENDING_AGE_ABB_HA_01_WINGS
+	end
+	local wings = { dark = {}, feudal = {}, castle = {}, imperial = {} }
+	for age, tier in pairs(wings) do
+		for _, wing in pairs({"culture", "economy", "military", "trade"}) do
+			for _, variant in pairs({"a", "b"}) do
+				local wing_name = "upgrade_add_" .. wing .. "_wing_" .. age .. "_" .. variant .. "_abb_ha_01"
+				local success, wing_upgrade = pcall(BP_GetUpgradeBlueprint, wing_name)
+				if not success or wing_upgrade == nil then
+					AGS_Print("AGS WARNING: missing wing upgrade '" .. wing_name .. "', skipping wing removal")
+					return nil
+				end
+				table.insert(tier, wing_upgrade)
+			end
+		end
+	end
+	AGS_ENDING_AGE_ABB_HA_01_WINGS = wings
+	return wings
 end

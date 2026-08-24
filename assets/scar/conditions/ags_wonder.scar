@@ -244,11 +244,17 @@ function AGS_Wonder_OnEntityKilled(context)
 	-- Fail the objective and reset the music.
 	AGS_Wonder_FailTimerObjective(player)
 	
+	-- FORK FIX: killer was resolved from context.victim (crediting the wonder's own owner) and the raw
+	-- entity handle went into string.format as uwid (fatal); use base-game killer pattern, numeric id, wonder table.
 	local killer = nil
-	if context.killer ~= nil and not World_OwnsEntity(context.victim) then
-		killer = Core_GetPlayersTableEntry(Entity_GetPlayerOwner(context.victim))
+	if context.killer ~= nil then
+		if scartype(context.killer) == ST_ENTITY and not World_OwnsEntity(context.killer) then
+			killer = Core_GetPlayersTableEntry(Entity_GetPlayerOwner(context.killer))
+		elseif scartype(context.killer) == ST_SQUAD and not World_OwnsSquad(context.killer) then
+			killer = Core_GetPlayersTableEntry(Squad_GetPlayerOwner(context.killer))
+		end
 	end
-	AGS_Notifications_Destroyed(context.victim, player, killer, AGS_NOTIFICATIONS_CONQUEST_DESTROYED)
+	AGS_Notifications_Destroyed(entity_uwid, player, killer, AGS_NOTIFICATIONS_WONDER_DESTROYED)
 	AGS_Wonder_Destroyed(player)
 end
 

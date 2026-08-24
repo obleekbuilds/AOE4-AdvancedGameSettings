@@ -128,8 +128,14 @@ function AGS_Conquest_OnEntityKilled(context)
 	local player = Core_GetPlayersTableEntry(context.victimOwner)
 	local entity_id = context.victim
 	local killer = nil
-	if context.killer ~= nil and not World_OwnsEntity(entity_id) then
-		killer = Core_GetPlayersTableEntry(Entity_GetPlayerOwner(entity_id))
+	-- FORK FIX: killer was resolved from the victim entity, always crediting the victim's own owner;
+	-- resolve from context.killer with base-game scartype/ownership guards, degrading to nil (neutral cue).
+	if context.killer ~= nil then
+		if scartype(context.killer) == ST_ENTITY and not World_OwnsEntity(context.killer) then
+			killer = Core_GetPlayersTableEntry(Entity_GetPlayerOwner(context.killer))
+		elseif scartype(context.killer) == ST_SQUAD and not World_OwnsSquad(context.killer) then
+			killer = Core_GetPlayersTableEntry(Squad_GetPlayerOwner(context.killer))
+		end
 	end
 	AGS_Conquest_ConquerableDestroyed(player, entity_id, killer)
 end
@@ -258,7 +264,9 @@ function AGS_Conquest_UpdateObjective()
 		return
 	end
 	local enemies_conquerables_statistics = AGS_Conquest_CountEnemyConquerables(AGS_GS_LOCAL_PLAYER)
-	if enemies_conquerables_statistics == nil then 
+	-- FORK FIX: the counter never returns nil, so the old nil-check was dead code and built == 0
+	-- fell through to a 0/0 (NaN) progress division; hide the counter until an enemy conquerable exists.
+	if enemies_conquerables_statistics.built == 0 then
 		AGS_Objectives_Set(AGS_CONQUEST_OBJECTIVE, nil, nil, false)
 		return
 	else
@@ -426,7 +434,13 @@ function AGS_Conquest_GetPlayerConquerableCount(player, player_conquerables)
 			built = 0,
 			remaining = 0,
 			destroyed = 0,
-		}	
+		}
+	end
+	-- FORK FIX: the replay stat updater can call this after the Conquest module
+	-- self-unregistered (player.AGS_Conquerables never initialized); degrade to
+	-- zero counts instead of a fatal nil iteration.
+	if player == nil or player.AGS_Conquerables == nil then
+		return player_conquerables
 	end
 	-- For every player count active and built conquerables.
 	for _, conquerable in pairs(player.AGS_Conquerables) do
@@ -467,7 +481,9 @@ end
 function AGS_Conquest_IsConquerable(entity_id)
 	if AGS_GLOBAL_SETTINGS.ConquestSettings.Capital and AGS_IsACapital(entity_id) then
 		return true
-	elseif AGS_GLOBAL_SETTINGS.ConquestSettings.Landmarks and AGS_IsALandmark(entity_id) then
+	-- FORK FIX: capitals carry the 'landmark' type so they matched the Landmarks branch even with
+	-- Capital=OFF; exclude them here so only the Capital toggle governs capitals.
+	elseif AGS_GLOBAL_SETTINGS.ConquestSettings.Landmarks and AGS_IsALandmark(entity_id) and not AGS_IsACapital(entity_id) then
 		return true
 	elseif AGS_GLOBAL_SETTINGS.ConquestSettings.TownCenters and AGS_IsATownCenter(entity_id) then
 		return true

@@ -320,8 +320,8 @@
 319,,Отзывы
 320,,Настроики матча
 321,,Версия мода:
-322,,Mod Title,,AGS Nomad
-323,,Mod Gamemode Description,,"AGS Nomad is alternative version to well known nomad that provides diplomacy and few options that stays true to nomad nature.\n\nHelp, feedback, bug reports and contribution to mode can be done at:\nhttps://github.com/obleekbuilds/AOE4-AdvancedGameSettings"
+322,,Кочевник AGS
+323,,"Кочевник основан на другом известном режиме «кочевник». Эта версия построена на Расширенных настройках игры и поэтому предоставляет дипломатию и несколько опций, оставаясь верной духу кочевников.\n\nПомощь, отзывы, сообщения об ошибках и вклад в режим:\nhttps://github.com/obleekbuilds/AOE4-AdvancedGameSettings"
 324,,Wonder Construction
 325,,Enables Wonder construction without Wonder win condition or Conquest win condition with Conquest Wonder selected.
 326,,Double Workers
@@ -381,3 +381,17 @@
 380,,Liberating City-State
 381,,Ally liberating City-State
 382,,Enemy liberating City-State
+383,,Командное завоевание
+384,,"Игроки считаются побеждёнными, только когда уничтожены все завоёвываемые здания их команды. Не работает с дипломатическими командами из-за особенностей отношений."
+385,,Создавать разведчика (рассеянный старт)
+386,,"Создаёт разведчика в дополнение к крестьянам, когда выбран рассеянный старт поселения."
+387,,Единый центральный священный объект
+388,,"Заменяет все священные объекты, созданные генератором карты, одним объектом, размещённым как можно ближе к центру карты."
+389,,Дополнительное население от домов
+390,,Дополнительный лимит населения для домов.
+391,,Турнирный баланс
+392,,Полный список изменений доступен в официальном репозитории GitHub.
+393,,Турнирный Кочевник AGS
+394,,"Преднастроенная версия режима «Кочевник» для турнира The Nomadic Clash, организованного MrMerlin."
+395,,Царь горы AGS
+396,,"Быстрый способ сыграть в «Царя горы» на любой карте.\n\nПомощь, отзывы, сообщения об ошибках и вклад в режим:\nhttps://github.com/obleekbuilds/AOE4-AdvancedGameSettings"

@@ -49,16 +49,18 @@ function AGS_Settled_AdjustSpawn()
 			local snameVIL = AGS_SGroupName(player.id, AGS_BP_VILLAGER)
 			local start_adjusted_pos = AGS_Starts_GetStartPosition(player.id)
 			AGS_SpawnSquad(player.id, snameVIL, sbp_vil, start_adjusted_pos, World_Pos(0, 0, -10), villager_count)
-		elseif villager_count < 0 then 
+		elseif villager_count < 0 then
 			-- Desired number was lower, we will eliminate few villagers.
-			local idx = 1
-			while(villager_count < 0) do
-				local soon_dead = SGroup_GetSquadAt(sgroup, idx)
-				Squad_Destroy(soon_dead)
+			-- FORK FIX: Squad_Destroy removes the squad from the SGroup immediately, so a
+			-- forward index runs past the shrinking group (fatal); iterate in reverse instead.
+			for idx = SGroup_CountSpawned(sgroup), 1, -1 do
+				if villager_count >= 0 then
+					break
+				end
+				Squad_Destroy(SGroup_GetSquadAt(sgroup, idx))
 				villager_count = villager_count + 1
-				idx = idx + 1
 			end
-		end		
+		end	
 	end
 end
 
@@ -107,9 +109,19 @@ function AGS_Settled_SpawnUnits(player_id, player_civ)
 
 	local sbp_shp = AGS_GetNeutralUnit(AGS_BP_SHEEP)
 	local snameSHP = AGS_SGroupName(player_id, AGS_BP_SHEEP)
-	AGS_SpawnSquad(player_id, snameSHP, sbp_shp, nil, World_Pos(-9, 0, -9), AGS_GLOBAL_SETTINGS.StartingSheeps)	
+	AGS_SpawnSquad(player_id, snameSHP, sbp_shp, nil, World_Pos(-9, 0, -9), AGS_GLOBAL_SETTINGS.StartingSheeps)
 
-	if player_civ == AGS_CIV_HRE then		
+	-- FORK FIX: french_ha_01 must spawn Jeanne d'Arc explicitly; Squad_CreateAndSpawnToward
+	-- (not deploy-style spawning) so her on-spawn events fire for the civ's custom UI.
+	if player_civ == AGS_CIV_FRENCH_HA_01 then
+		local sbp_joan = BP_GetSquadBlueprint("unit_jeanne_d_arc_1_fre_ha_01")
+		local spawn_pos = AGS_Starts_GetStartPosition(player_id)
+		Squad_CreateAndSpawnToward(sbp_joan, player_id, 1, Util_GetOffsetPosition(spawn_pos, 5, 5), spawn_pos)
+	end
+
+	-- FORK FIX: Order of the Dragon (hre_ha_01) also starts with a prelate in the
+	-- standard start; AGS_GetCivilizationUnit resolves its own monk blueprint.
+	if player_civ == AGS_CIV_HRE or player_civ == AGS_CIV_HRE_HA_01 then
 		local sbp_mnk = AGS_GetCivilizationUnit(player_civ, AGS_BP_MONK)
 		local snameMNK = AGS_SGroupName(player_id, AGS_BP_MONK)
 		local sg_mnk = AGS_SpawnSquad(player_id, snameMNK, sbp_mnk, nil, World_Pos(-14, 0, -14), AGS_GLOBAL_SETTINGS.StartingMonks)	

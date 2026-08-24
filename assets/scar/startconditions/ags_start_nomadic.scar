@@ -87,16 +87,18 @@ function AGS_Nomadic_AdjustVillagers()
 			local snameVIL = AGS_SGroupName(player.id, AGS_BP_VILLAGER)
 			local start_adjusted_pos = AGS_Starts_GetStartPosition(player.id)
 			AGS_SpawnSquad(player.id, snameVIL, sbp_vil, start_adjusted_pos, World_Pos(0, 0, -10), villager_count)
-		elseif villager_count < 0 then 
+		elseif villager_count < 0 then
 			-- Desired number was lower, we will eliminate few villagers.
-			local idx = 1
-			while(villager_count < 0) do
-				local soon_dead = SGroup_GetSquadAt(sgroup, idx)
-				Squad_Destroy(soon_dead)
+			-- FORK FIX: Squad_Destroy shrinks the SGroup immediately, so a forward index
+			-- runs past SGroup_Count (fatal error); iterate in reverse like the base game.
+			for i = SGroup_CountSpawned(sgroup), 1, -1 do
+				if villager_count >= 0 then
+					break
+				end
+				Squad_Destroy(SGroup_GetSquadAt(sgroup, i))
 				villager_count = villager_count + 1
-				idx = idx + 1
 			end
-		end		
+		end
 	end
 end
 
@@ -189,7 +191,18 @@ function AGS_Nomadic_SpawnUnits(player_id, player_civ)
 	local snameSHP = AGS_SGroupName(player_id, AGS_BP_SHEEP)
 	local sg_shp = AGS_SpawnSquad(player_id, snameSHP, sbp_shp, nil, World_Pos(-13, 0, -13), AGS_GLOBAL_SETTINGS.StartingSheeps)
 
-	if player_civ == AGS_CIV_HRE then		
+	-- FORK FIX: Jeanne d'Arc must spawn for her civ or it has no hero at all.
+	-- Squad_CreateAndSpawnToward (not AGS_SpawnSquad) so her on-spawn events
+	-- fire for the civ's custom UI, mirroring Relic's EmpireWars_SpawnJoan.
+	if player_civ == AGS_CIV_FRENCH_HA_01 then
+		local sbp_joan = BP_GetSquadBlueprint("unit_jeanne_d_arc_1_fre_ha_01")
+		local spawn_pos = AGS_Starts_GetStartPosition(player_id)
+		Squad_CreateAndSpawnToward(sbp_joan, player_id, 1, Util_GetOffsetPosition(spawn_pos, 5, 5), spawn_pos)
+	end
+
+	-- FORK FIX: Order of the Dragon (hre_ha_01) also starts with a prelate; the raceName
+	-- differs from base HRE so it silently skipped this branch.
+	if player_civ == AGS_CIV_HRE or player_civ == AGS_CIV_HRE_HA_01 then
 		local sbp_mnk = AGS_GetCivilizationUnit(player_civ, AGS_BP_MONK)
 		local snameMNK = AGS_SGroupName(player_id, AGS_BP_MONK)
 		local sg_mnk = AGS_SpawnSquad(player_id, snameMNK, sbp_mnk, nil, World_Pos(-14, 0, -14), AGS_GLOBAL_SETTINGS.StartingMonks)	

@@ -181,6 +181,97 @@ materially fixed rather than tolerated:
 Needs in-game verification that slot indices still map 1=blue ... 9=grey
 (the deprecation notes and current base-game usage say they do).
 
+## 8. Full-mod audit: 30 verified defects fixed before release
+
+A systematic audit of every reachable scar file, cross-checked against the
+current game's own script sources (extracted from the game archives), the
+official SCARDOC signatures, and the game-data name tables. Every finding
+below was independently verified against those references before being
+fixed; two candidate findings that did not survive verification were left
+alone. Fatal crashes first:
+
+* **Team Solidarity** (`conditions/ags_team_solidarity.scar`) — every
+  solidarity elimination crashed on an undefined global `owner`; now names
+  the defeated teammate it failed to protect.
+* **Wonder destruction** (`conditions/ags_wonder.scar`) — passed the raw
+  entity handle into a `%d` format (fatal), credited the wonder's own owner
+  as its destroyer, and used the conquest notification table; all three
+  fixed (numeric UWID, base-game killer resolution, wonder table).
+* **Villager-count trimming** (`startconditions/ags_start_settled.scar`,
+  `ags_start_nomadic.scar`) — lowering starting villagers below the map
+  default destroyed squads with a forward index over a live-shrinking
+  SGroup, running out of bounds (fatal); now iterates in reverse like the
+  base game.
+* **Replay stat viewer** (`specials/ags_utilities.scar` +
+  `conditions/ags_conquest.scar`) — fetching conquest stats crashed when
+  the Conquest module had self-unregistered; degrades to zero counts, both
+  at the call site and inside the counter.
+* **Objective sentinels** (`coreconditions/ags_conditions_objectives.scar`)
+  — the "OBJECTIVE WAS NOT DEFINED" guards warned and then fell through
+  into fatal engine calls anyway; they now actually return. The score kill
+  handler also gained the base game's scartype guard on `context.killer`.
+
+Features that silently did nothing or misbehaved:
+
+* Score timer lobby choices 100/105 minutes had no handler branch — a
+  score match set to 100 ended at the default 60
+  (`ags_global_settings.scar`).
+* `AGS_RemoveUpgrade`'s guard was inverted (copy-paste of the apply
+  helper), so Technology Age's entire per-civ conflict-correction table
+  was dead code (`helpers/ags_blueprints.scar`). The Golden Horde also got
+  its (missing, now data-verified) correction list, and Lancaster's
+  upgrade list — a verbatim English copy — was replaced with its real
+  `_lan` unit lines.
+* Score timer expiry mid-treaty eliminated players during peace (or
+  silently lost the resolution); now retries after the treaty ends
+  (`conditions/ags_score.scar`). Treaty also never actually disabled
+  sacred-site capture: Religious and Culture now re-apply the treaty state
+  once their site tables exist.
+* Conquest: killer was resolved from the victim (destroyer always shown as
+  the victim's own owner); Capital=OFF still tracked capitals via the
+  Landmarks toggle; an empty enemy list produced a 0/0 NaN progress bar.
+  Annihilation's capital-vs-landmark classification could leave a
+  resource-dead player unbeatable (`conditions/ags_annihilation.scar`).
+* Religious/Culture polish: victory countdown could stay paused forever
+  (missing forced `Timer_Resume`, world-owned-instigator guard too broad),
+  site flash toggled off when asked to flash twice, and several FFA
+  notifications showed "Ally ..." for enemy-vs-enemy actions
+  (`conditions/ags_religious.scar`, `ags_culture.scar`).
+* Regicide re-defeated already-eliminated players during king cleanup;
+  surrender's network handler gained the base game's already-eliminated
+  guard; tributes are now funds-checked in the simulation before gifting
+  (racing clicks could previously drive resources negative); dynamic
+  diplomacy no longer fires a false reverse relation cue
+  (`ags_regicide.scar`, `ags_surrender.scar`, `diplomacy/*`).
+* Variant-civ coverage: Golden Horde now gets the Mongol handling in team
+  balance, population capacity, AI stone vision, tournament nomad wood,
+  stone-tribute exclusion, and Fortified-start palisades (its own, not
+  Rus); Zhu Xi's Legacy gets the Chinese tournament nerf; Sultanate of
+  Tughlaq skips the generic tech grant like base Delhi; Order of the
+  Dragon gets its prelate in settled/nomadic starts and its TC landmark
+  under TC Restrictions (now table-driven); Jeanne d'Arc actually spawns
+  for her civ in scripted starts.
+* Ending Age rework (`gameplay/ags_ending_age.scar`): the Imperial cap no
+  longer strips Abbasid's imperial-tier wings (off-by-one vs Relic's
+  logic); the Ayyubid variant's own wing family is now removed (resolved
+  lazily and verified against game data); civs with no real
+  construction-menu tokens (all variants, Jin, Lancaster, Templar) degrade
+  cleanly to the engine-side age cap instead of targeting nonexistent
+  menu names — the prefix allowlist matches the game data exactly
+  (Ottomans genuinely have no such menus).
+* Presentation/notification plumbing: game-over stingers referenced a
+  nonexistent `stinger_eliminated` movie and captured their HUD-restore
+  callback before it was defined (HUD never came back); the countdown
+  music duration key was misspelled; `Obj_CreatePopup`'s third argument is
+  now `""` (a data-template override per SCARDOC, not a state); the
+  objective "OR" template selection was inverted
+  (`coreconditions/*`).
+* Localization packaging: the Traditional Chinese CSV was named with dots
+  (`Advanced.Game.Settings_zh-tw.csv`) so the localization loader could
+  never find it — renamed to the loader's convention; Russian was never
+  registered in the locdb (its CSV was dead weight) — registered, its two
+  malformed rows repaired, and the 14 missing newest rows translated.
+
 ## Known limitations
 
 * All civ tables are still hardcoded snapshots of game data; future patches

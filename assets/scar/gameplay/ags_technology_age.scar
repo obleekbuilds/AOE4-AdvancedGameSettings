@@ -59,7 +59,9 @@ function AGS_TechnologyAge_DetermineUpgrades(player_id, player_civ, upgrades_age
 	local civ_corrections = AGS_UPGRADE_CORRECTION_TABLE[player_civ] or {}
 	local civ_upgrades = AGS_UPGRADE_TABLE[player_civ] or {}
 	-- Common upgrades are applied first.
-	if player_civ ~= AGS_CIV_SULTANATE then
+	-- FORK FIX: Sultanate of Tughlaq replaces the whole common tree with _sul_ha_tug variants,
+	-- so it must skip the generic grant exactly like base Delhi (avoids double-granting techs).
+	if player_civ ~= AGS_CIV_SULTANATE and player_civ ~= AGS_CIV_SULTANATE_HA_TUG then
 		AGS_TechnologyAge_ApplyUpgradeList(player_id, AGS_UPGRADE_TABLE[AGS_UP_ANY][upgrades_age])
 		-- Remove upgrades that would conflict with unique civ upgrades.
 		AGS_TechnologyAge_RemoveUpgradeList(player_id, civ_corrections)

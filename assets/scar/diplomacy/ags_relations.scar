@@ -80,9 +80,11 @@ function Diplomacy_ChangeRelationNtw(playerID, data)
 		Core_CallDelegateFunctions("OnRelationshipChanged", playerID, targetPlayer.id)		-- HACK: Player_SetRelationship() needs to trigger a global event (GE_RelationChanged)
 		
 		if not Player_IsHuman(playerID) or not Player_IsHuman(targetPlayer.id) then -- HACK: Force AI to change relation (AI will still be dumb and not understand what to do)
-			Player_SetRelationship(targetPlayer.id, playerID, relation)			
+			Player_SetRelationship(targetPlayer.id, playerID, relation)
+			-- FORK FIX: fire the reverse delegate only when the reverse relation was actually set;
+			-- unconditionally firing it showed the initiator a false "X is now ..." cue reporting the old, unchanged stance.
+			Core_CallDelegateFunctions("OnRelationshipChanged", targetPlayer.id, playerID)	-- HACK: Player_SetRelationship() needs to trigger a global event (GE_RelationChanged)
 		end
-		Core_CallDelegateFunctions("OnRelationshipChanged", targetPlayer.id, playerID)		-- HACK: Player_SetRelationship() needs to trigger a global event (GE_RelationChanged)
 	end
 end
 

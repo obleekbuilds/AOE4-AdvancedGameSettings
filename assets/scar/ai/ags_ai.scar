@@ -96,7 +96,9 @@ function AGS_AI_ApplyAdjustment_StoneVision()
 	local outcrop_group = EGroup_CreateIfNotFound("stone_outcrops")
 	World_GetAllNeutralEntities(outcrop_group)
 	for _, player in pairs(PLAYERS) do 				
-		if AGS_AI_IsAI(player.id) and player.raceName == AGS_CIV_MONGOL then			
+		-- FORK FIX: Golden Horde carries its own raceName but shares the Ovoo stone
+		-- economy, so its AI needs the same outcrop reveal as base Mongol.
+		if AGS_AI_IsAI(player.id) and (player.raceName == AGS_CIV_MONGOL or player.raceName == AGS_CIV_MONGOL_HA_GOL) then
 			local _AGS_ShowStone = function(gid, idx, eid)		
 				if eid ~= nil and Entity_IsOfType(eid, "resource") and Entity_IsOfType(eid, "stone") then
 					local stone_position = Entity_GetPosition(eid)
@@ -114,7 +116,9 @@ end
 -- Changes certain value as AI might not be able to manage certain nomad conditions.
 function AGS_AI_ApplyAdjustment_Nomad(player)	
 	Player_SetStateModelBool(player.id, "player_can_construct_structures", false)	
-	if player.raceName == AGS_CIV_CHINESE then
+	-- FORK FIX: Zhu Xi's Legacy carries its own raceName but shares the Chinese
+	-- nomad-start weakness, so its AI gets the same wood gift.
+	if player.raceName == AGS_CIV_CHINESE or player.raceName == AGS_CIV_CHINESE_HA_01 then
 		Player_GiftResource(player.id, RT_Wood, 375)
 	end
 end

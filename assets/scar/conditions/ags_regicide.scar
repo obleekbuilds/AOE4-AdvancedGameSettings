@@ -102,11 +102,14 @@ function AGS_Regicide_OnEntityKilled(context)
 	local squad_uwid = Squad_GetID(context.victimSquad)
 	local owner = Core_GetPlayersTableEntry(context.victimOwner)
 	-- Only tracked kings.
-	if owner.AGS_Kings[squad_uwid] == nil then
+	-- FORK FIX: also skip kings already marked dead — AGS_Regicide_KillAllKings marks them
+	-- before Squad_Kill, so this cleanup kill must not re-eliminate an already-defeated player.
+	local king_entry = owner.AGS_Kings[squad_uwid]
+	if king_entry == nil or not king_entry.is_alive then
 		return
 	end
 	-- King is dead
-	owner.AGS_Kings[squad_uwid].is_alive = false
+	king_entry.is_alive = false
 	AGS_Regicide_UpdateObjective()
 	-- Try to eliminate player.
 	local king_count = AGS_Regicide_GetPlayerKingCount(owner)
@@ -212,6 +215,11 @@ function AGS_Regicide_RemoveObjective()
 end
 
 function AGS_Regicide_Eliminate(player)
+	-- FORK FIX: never re-defeat an already-eliminated player (avoids spurious
+	-- regicide-failure popup and duplicate OnPlayerEliminated dispatch).
+	if player.isEliminated then
+		return
+	end
 	AGS_Regicide_KillAllKings(player)
 	AGS_SetPlayerDefeated(
 		player.id, 

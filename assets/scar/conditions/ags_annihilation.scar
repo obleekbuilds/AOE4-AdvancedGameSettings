@@ -231,9 +231,11 @@ function AGS_Annihilation_IsAbleToProduce(player)
 			if AGS_IsThisSpecialMobileBuildingDead(entity) then
 				AGS_Print("Mobile building is destroyed and will be ignored for annihilation...")
 			else
-				if Entity_IsProductionQueueAvailable(entity) or Entity_GetStateModelBool(entity, "do_unpacking_construction") then				
+				if Entity_IsProductionQueueAvailable(entity) or Entity_GetStateModelBool(entity, "do_unpacking_construction") then
 					-- Track if player has a landmark that can produce units
-					if AGS_IsALandmarkInner(entity) then
+					-- FORK FIX: capitals carry the 'landmark' type but must be priced like town centers
+					-- (base-game parity), otherwise a resource-dead player is never annihilated.
+					if AGS_IsALandmarkInner(entity) and not AGS_IsACapital(entity) then
 						has_landmark_entity_with_queue = true
 						-- Track if player has a production building
 					else

@@ -767,7 +767,13 @@ function AGS_GlobalSettings_SetScoreTimer(score_timer)
 	elseif score_timer.enum_value == score_timer.enum_items.score_timer_90 then
 		AGS_GLOBAL_SETTINGS.ScoreSettings.Timer = 90    
 	elseif score_timer.enum_value == score_timer.enum_items.score_timer_95 then
-		AGS_GLOBAL_SETTINGS.ScoreSettings.Timer = 95    
+		AGS_GLOBAL_SETTINGS.ScoreSettings.Timer = 95
+	-- FORK FIX: score_timer_100/105 exist in every mode's option enum but had no branch here,
+	-- so both lobby choices silently fell through to the default 60 minute timer.
+	elseif score_timer.enum_value == score_timer.enum_items.score_timer_100 then
+		AGS_GLOBAL_SETTINGS.ScoreSettings.Timer = 100
+	elseif score_timer.enum_value == score_timer.enum_items.score_timer_105 then
+		AGS_GLOBAL_SETTINGS.ScoreSettings.Timer = 105
 	elseif score_timer.enum_value == score_timer.enum_items.score_timer_110 then
 		AGS_GLOBAL_SETTINGS.ScoreSettings.Timer = 110    
 	elseif score_timer.enum_value == score_timer.enum_items.score_timer_115 then

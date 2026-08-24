@@ -30,38 +30,63 @@ function Diplomacy_SendTributeNtw(playerID, data)
 		return  math.floor(amount * (1.0 + tax_rate))
 	end
 	
-	for i = 1, #chunks do 
+	for i = 1, #chunks do
 		local parts = string.split(chunks[i])
-		if #parts == 5 then 
+		if #parts == 5 then
 			local receiver = Core_GetPlayersTableEntryFromIndex(tonumber(parts[5]))
 			local tribute = {
 				food = tonumber(parts[1]),
 				wood = tonumber(parts[2]),
 				gold = tonumber(parts[3]),
-				stone = tonumber(parts[4]),				
-				sender = sender,		
+				stone = tonumber(parts[4]),
+				sender = sender,
 				receiver = receiver,
 				tax_rate = tax_rate,
-			}		
+			}
 			table.insert(tribute_data, tribute)
-						
+		end
+	end
+
+	-- FORK FIX: the click-time funds check runs ticks before this simulation code; recheck the
+	-- summed subtotal here (base-game parity) and skip gifting entirely if the sender can no longer cover it.
+	local subtotal = {
+		0,	-- food subtotal
+		0,	-- wood subtotal
+		0,	-- gold subtotal
+		0,	-- stone subtotal
+	}
+	for i = 1, #tribute_data do
+		local tribute = tribute_data[i]
+		subtotal[1] = subtotal[1] + tribute.food
+		subtotal[2] = subtotal[2] + tribute.wood
+		subtotal[3] = subtotal[3] + tribute.gold
+		subtotal[4] = subtotal[4] + tribute.stone
+	end
+	local has_enough = true
+	for i = 1, 4 do
+		has_enough = has_enough and Player_GetResource(sender.id, _diplomacy.resources[i].resource_type) >= subtotal[i] * (1.0 + tax_rate)
+	end
+
+	if has_enough then
+		for i = 1, #tribute_data do
+			local tribute = tribute_data[i]
 			if tribute.food > 0 then
-				Player_GiftResource(receiver.id, RT_Food, tribute.food)
+				Player_GiftResource(tribute.receiver.id, RT_Food, tribute.food)
 				Player_GiftResource(sender.id, RT_Food, -EffectiveTribute(tribute.food))
 			end
 			if tribute.wood > 0 then
-				Player_GiftResource(receiver.id, RT_Wood, tribute.wood)
+				Player_GiftResource(tribute.receiver.id, RT_Wood, tribute.wood)
 				Player_GiftResource(sender.id, RT_Wood, -EffectiveTribute(tribute.wood))
 			end
 			if tribute.gold > 0 then
-				Player_GiftResource(receiver.id, RT_Gold, tribute.gold)
+				Player_GiftResource(tribute.receiver.id, RT_Gold, tribute.gold)
 				Player_GiftResource(sender.id, RT_Gold, -EffectiveTribute(tribute.gold))
 			end
 			if tribute.stone > 0 then
-				Player_GiftResource(receiver.id, RT_Stone, tribute.stone)
+				Player_GiftResource(tribute.receiver.id, RT_Stone, tribute.stone)
 				Player_GiftResource(sender.id, RT_Stone, -EffectiveTribute(tribute.stone))
 			end
-		
+
 			if tribute.receiver.isLocal and not tribute.receiver.isEliminated then
 				Diplomacy_ShowEventCue(tribute)
 			elseif sender.isLocal and (tribute.food > 0 or tribute.wood > 0 or tribute.gold > 0 or tribute.stone > 0) then
@@ -70,8 +95,8 @@ function Diplomacy_SendTributeNtw(playerID, data)
 				UI_CreateEventCueClickable(-1, cue.lifetime, 0, cue.repeatTime, text, cue.desc, cue.template, cue.icon, cue.sfx, cue.color.r, cue.color.g, cue.color.b, cue.color.a, cue.style, nothing)
 			end
 		end
-	end	
-	
+	end
+
 	_diplomacy.tribute.is_in_progress = false
 	Diplomacy_UpdateDataContext()
 	Rule_AddOneShot(Rule_Diplomacy_UpdateUI, 0)

@@ -103,6 +103,11 @@ function AGS_Score_OnEntityKilled(context)
 		return
 	end
 	local killer_entity_id = context.killer
+	-- FORK FIX: the engine may report a non-entity killer (Relic's own handlers
+	-- for this event branch on scartype); degrade to no score rather than crash.
+	if scartype(killer_entity_id) ~= ST_ENTITY then
+		return
+	end
 	if World_OwnsEntity(killer_entity_id) then
 		return
 	end
@@ -242,7 +247,11 @@ end
 
 function AGS_Score_OnTimerTick()
 	-- Check if its over.
-	if Timer_Exists(AGS_SCORE_TIMER) and Timer_GetRemaining(AGS_SCORE_TIMER) == 0.0 then	
+	if Timer_Exists(AGS_SCORE_TIMER) and Timer_GetRemaining(AGS_SCORE_TIMER) == 0.0 then
+		-- FORK FIX: treaty suspends score resolution; keep rule and timer alive and retry next tick.
+		if not AGS_SCORE_ACTIVE then
+			return
+		end
 		Rule_RemoveMe()
 		Timer_End(AGS_SCORE_TIMER)
 		AGS_Score_EndWar()

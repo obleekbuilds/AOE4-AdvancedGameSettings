@@ -47,7 +47,10 @@ end
 
 function AGS_TownCenterRestrictions_RestrictLandmarks()
 	for _, player in pairs(PLAYERS) do
-		if player.raceName == AGS_CIV_ENGLISH or player.raceName == AGS_CIV_HRE then
+		-- FORK FIX: hard-coded english/hre list skipped Order of the Dragon (hre_ha_01), whose
+		-- Hohenzollern Castle also grants a TC; drive off the entity table so any civ with a TC landmark is covered.
+		local civ_entities = AGS_ENTITY_TABLE[player.raceName]
+		if civ_entities ~= nil and civ_entities[AGS_BP_TC_LANDMARK] ~= nil then
 			Player_SetEntityProductionAvailability(player.id, AGS_GetCivilizationEntity(player.raceName, AGS_BP_TC_LANDMARK), ITEM_REMOVED)
 		end
 	end

@@ -43,7 +43,9 @@ AGS_PRESENTATIONS_ELIMINATION = {
 	-- ELIMINATED
 	title = Loc_GetString(11165821),
 	message = Loc_Empty(),
-	video = "stinger_eliminated",	
+	-- FORK FIX: "stinger_eliminated" is not a shipped movie; the base game uses
+	-- stinger_defeat for every loss presentation, so use the asset that exists.
+	video = "stinger_defeat",
 	callback = AGS_Presentations_RevealUI,
 	-- Configurable
 	icon_default = nil,
@@ -174,6 +176,11 @@ end
 function AGS_Presentations_RevealUI()
 	Taskbar_SetVisibility(true)
 end
+-- FORK FIX: the presentation tables above are built at import time, before this function
+-- exists, so their callback fields captured nil (HUD never restored); rebind them here.
+AGS_PRESENTATIONS_DEFEAT.callback = AGS_Presentations_RevealUI
+AGS_PRESENTATIONS_ELIMINATION.callback = AGS_Presentations_RevealUI
+AGS_PRESENTATIONS_VICTORY.callback = AGS_Presentations_RevealUI
 -- Creates presentation after short delay.
 function AGS_Presenations_CreateDelayed(player_id, presentation, icon, sound)
 	Rule_AddOneShot(

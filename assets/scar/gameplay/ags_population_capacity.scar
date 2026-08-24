@@ -49,7 +49,9 @@ end
 function AGS_PopulationCapacity_SetMinPopulation(player, pop_size)
 	local value = pop_size
 	-- Mongols receive always maximum to maintain their unique bonus.
-	if player.raceName == AGS_CIV_MONGOL then
+	-- FORK FIX: Golden Horde (mongol_ha_gol) shares the Mongol houseless pinned-cap
+	-- mechanic (see Relic's regicide script), so it needs the same compensation.
+	if player.raceName == AGS_CIV_MONGOL or player.raceName == AGS_CIV_MONGOL_HA_GOL then
 		if AGS_GLOBAL_SETTINGS.MinimumPopulationReset then
 			value = value - 200			
 		else

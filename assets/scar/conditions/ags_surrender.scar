@@ -92,10 +92,15 @@ end
 -- Network Functions:
 ---------------------------------------------------------------------------------------------------
 -- Kill player that was passed through network.
-function AGS_Surrender_Notify(player_id)	
-	AGS_Print("AGS_Surrender_Notify", player_id)	
-	local player = Core_GetPlayersTableEntry(player_id)	
-	AGS_SetPlayerDefeated(player.id, AGS_Presentations_Loss, AGS_WR_SURRENDER, 
+function AGS_Surrender_Notify(player_id)
+	AGS_Print("AGS_Surrender_Notify", player_id)
+	local player = Core_GetPlayersTableEntry(player_id)
+	-- FORK FIX: base game guards against already-eliminated players here; without it a
+	-- duplicate/racing surrender broadcast re-runs the whole defeat pipeline on every peer.
+	if player == nil or player.isEliminated then
+		return
+	end
+	AGS_SetPlayerDefeated(player.id, AGS_Presentations_Loss, AGS_WR_SURRENDER,
 		AGS_Objectives_PresentWrap(
 			AGS_SURRENDER_OBJECTIVE, 
 			OS_Failed, 

@@ -63,7 +63,9 @@ function AGS_TeamBalance_UpdateTeamPopulation(player, allies, allies_count)
 	local pop_per_ally = pop_value / allies_count
 	for _, ally in pairs(allies) do
 		AGS_TeamBalance_IncreaseMaxCapPopulation(ally, pop_per_ally)
-		if ally.raceName == AGS_CIV_MONGOL then
+		-- FORK FIX: Golden Horde shares base Mongol's pinned personnel cap (no houses), so it
+		-- needs the personnel_cap bump too, matching Relic's mongol/mongol_ha_gol pairing.
+		if ally.raceName == AGS_CIV_MONGOL or ally.raceName == AGS_CIV_MONGOL_HA_GOL then
 			AGS_TeamBalance_IncreaseCapPopulation(ally, pop_per_ally)
 		end
 	end

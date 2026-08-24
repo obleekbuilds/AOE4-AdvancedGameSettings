@@ -101,7 +101,12 @@ function Religious_UpdatePlayerStats(player, scarModel)
 end
 -- Callback invoked by UpdatePlayerDataContexts() in replaystatviewer.scar to fetch player progress
 function Conquest_UpdatePlayerStats(player, scarModel)
-	local conquerables = AGS_Conquest_GetPlayerConquerableCount(player)
+	-- FORK FIX: the conquest module can self-unregister (all sub-toggles off, or <2 players)
+	-- leaving player.AGS_Conquerables nil while Conquest is still true; degrade to 0/0 in replays.
+	local conquerables = nil
+	if player ~= nil and player.AGS_Conquerables ~= nil then
+		conquerables = AGS_Conquest_GetPlayerConquerableCount(player)
+	end
 	if conquerables == nil then
 		conquerables = {
 			built = 0,

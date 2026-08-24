@@ -503,6 +503,10 @@ AGS_ENTITY_TABLE = {
 		-- This variant has a real tier-1 scout; its khans start at tier 2.
 		scout = "unit_scout_1_mon_ha_gol",
 		king = "unit_king_1_mon_ha_gol",
+		-- FORK FIX: unlike base Mongol, this variant has its own palisade
+		-- blueprints; without these keys Fortified start used Rus palisades.
+		palisade_wall = "building_defense_palisade_mon_ha_gol",
+		palisade_gate = "building_defense_palisade_gate_mon_ha_gol",
 		monk = "unit_monk_3_mon_ha_gol",
 		monastery = "building_unit_religious_mon_ha_gol",
 		barracks = "building_unit_infantry_mon_ha_gol",
@@ -765,6 +769,18 @@ AGS_UPGRADE_CORRECTION_TABLE = {
 		"upgrade_siege_works",		
 	},
 	mongol_ha_gol = {
+		-- FORK FIX: Golden Horde replaces these common upgrades with its own
+		-- _mon_ha_gol variants (all verified in game data), so Technology Age
+		-- must strip the generic copies like it does for base Mongol.
+		"upgrade_econ_resource_wood_harvest_rate_2",
+		"upgrade_econ_resource_wood_harvest_rate_3",
+		"upgrade_econ_resource_wood_harvest_rate_4",
+		"upgrade_manatarms_elite_army_tactics",
+		"upgrade_ranged_incendiary",
+		"upgrade_siege_chemistry",
+		"upgrade_siege_works",
+		"upgrade_tech_university_architecture_4",
+		"upgrade_tech_university_biology",
 	},
 	ottoman = {
 		"upgrade_tech_military_academy",
@@ -1085,27 +1101,21 @@ AGS_UPGRADE_TABLE = {
 		},
 	},
 	lancaster = {
+		-- FORK FIX: this block was a verbatim copy of the English list; those
+		-- _eng upgrades target units Lancaster does not field. Replaced with
+		-- Lancaster's own _lan unit-line upgrades (no _lan feudal upgrade exists).
 		AGE_DARK = {
 		},
 		AGE_FEUDAL = {
-		"upgrade_naval_shipwrights_eng",
-		"upgrade_longbow_make_camp_eng",
-		"upgrade_unit_manatarms_2_eng",
-				},
+		},
 		AGE_CASTLE = {
-			"upgrade_armor_clad_eng",
-			"upgrade_network_of_citadels_eng",
-			"upgrade_unit_archer_3_eng",
-			"upgrade_unit_manatarms_3_eng",
-			"upgrade_unit_spearman_3_eng",
+			"upgrade_unit_yeoman_3_lan",
+			"upgrade_unit_hobelar_3_lan",
 		},
 		AGE_IMPERIAL = {
-			"upgrade_farm_improved_enclosures_eng",
-			"upgrade_ranged_longbow_arrow_volley_eng",
-			"upgrade_trebuchet_aoe_eng",
-			"upgrade_unit_archer_4_eng",
-			"upgrade_unit_manatarms_4_eng",
-			"upgrade_unit_spearman_4_eng",
+			"upgrade_unit_yeoman_4_lan",
+			"upgrade_unit_hobelar_4_lan",
+			"upgrade_unit_champion_4_lan",
 		},
 	},
 	malian = {
@@ -1637,8 +1647,10 @@ end
 
 function AGS_RemoveUpgrade(player_id, upgrade)
 	local bp_upgrade = BP_GetUpgradeBlueprint(upgrade)
-	if not Player_HasUpgrade(player_id, bp_upgrade) then
-		Player_RemoveUpgrade(player_id, bp_upgrade)				
+	-- FORK FIX: guard was inverted (copy-paste of AGS_ApplyUpgrade), so the
+	-- Technology Age correction table never stripped an owned upgrade.
+	if Player_HasUpgrade(player_id, bp_upgrade) then
+		Player_RemoveUpgrade(player_id, bp_upgrade)
 	end
 end
 
