@@ -14,6 +14,9 @@ AGS_AI_ADJUSTREASON_NONE = 0
 AGS_AI_ADJUSTREASON_NOMAD = 1
 AGS_AI_ADJUSTREASON_HIDE_KING = 2
 AGS_AI_ADJUSTREASON_WONDER_CONSTRUCTION = 3
+-- Seconds before a nomad AI is settled by script; matches AGS_NOMADIC_DURATION,
+-- the window in which human players receive their starting resources.
+AGS_AI_NOMAD_SETTLE_DELAY = 60
 
 ---------------------------------------------------------------------------------------------------
 -- Delegates:
@@ -114,13 +117,37 @@ function AGS_AI_ApplyAdjustment_WonderConstruction(player)
 	Player_SetStateModelBool(player.id, "is_wonder_construction_enabled", false)	
 end
 -- Changes certain value as AI might not be able to manage certain nomad conditions.
-function AGS_AI_ApplyAdjustment_Nomad(player)	
-	Player_SetStateModelBool(player.id, "player_can_construct_structures", false)	
+function AGS_AI_ApplyAdjustment_Nomad(player)
+	Player_SetStateModelBool(player.id, "player_can_construct_structures", false)
 	-- FORK FIX: Zhu Xi's Legacy carries its own raceName but shares the Chinese
 	-- nomad-start weakness, so its AI gets the same wood gift.
 	if player.raceName == AGS_CIV_CHINESE or player.raceName == AGS_CIV_CHINESE_HA_01 then
 		Player_GiftResource(player.id, RT_Wood, 375)
 	end
+	-- FORK FIX: construction is disabled above because the AI cannot settle on
+	-- its own, but nothing ever granted it a town center afterwards — AI players
+	-- sat bricked with a few villagers for the whole match (Nomadic and Scattered
+	-- starts both route here). Settle the AI by script once the nomad resource
+	-- accumulation window has passed.
+	Rule_AddOneShot(AGS_AI_SettleNomadAI, AGS_AI_NOMAD_SETTLE_DELAY, { player = player })
+end
+
+-- Grants a nomad AI its capital town center and restores normal construction.
+function AGS_AI_SettleNomadAI(context, data)
+	local player = data.player
+	if player == nil or player.isEliminated then
+		return
+	end
+	Player_SetStateModelBool(player.id, "player_can_construct_structures", true)
+	-- Never double-grant if a town center appeared some other way.
+	if EGroup_CountSpawned(Player_GetEntitiesFromType(player.id, AGS_BP_TC)) > 0 then
+		return
+	end
+	local ebp_tc = AGS_GetCivilizationEntity(player.raceName, AGS_BP_TC_CAPITAL)
+	local ename = AGS_EGroupName(player.id, AGS_BP_TC)
+	AGS_SpawnEntity(player.id, ename, ebp_tc, nil, World_Pos(0, 0, 0))
+	-- Refresh AI planning so it adopts the new base.
+	AIPlayer_SetRequiresStatsUpdate(player.id)
 end
 -- Changes King position if possible to secure him from danger.
 function AGS_AI_ApplyAdjustment_HideKing(player)

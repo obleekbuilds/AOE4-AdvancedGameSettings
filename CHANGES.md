@@ -272,6 +272,27 @@ Features that silently did nothing or misbehaved:
   registered in the locdb (its CSV was dead weight) — registered, its two
   malformed rows repaired, and the 14 missing newest rows translated.
 
+## 9. Nomad/Scattered vs AI: AI players are now settled by script
+
+**File:** `assets/scar/ai/ags_ai.scar` (`AGS_AI_ApplyAdjustment_Nomad`)
+
+Confirmed in-game (and present in upstream unchanged): in Nomadic and
+Scattered starts the mod disables construction for AI players ("AI might
+not be able to manage certain nomad conditions") — but nothing ever gave
+them a town center or re-enabled building. AI opponents spent the entire
+match bricked with a handful of villagers and never developed.
+
+The construction lockout stays (the AI genuinely cannot perform the
+settle-and-place-TC dance), but 60 seconds in — the same window in which
+players receive their trickled starting resources — each AI player now
+receives its civilization's capital town center at its start position
+(force-constructed, same spawn path the Settled start uses, which is known
+to work with AI), construction is re-enabled, and the AI's planner is
+nudged to adopt the new base. The AI effectively plays a Settled start on
+a 60-second delay, which is the accepted trade-off: a functioning opponent
+with a small settling head start instead of a vegetable. If a town center
+already exists by then (mode script or takeover), the grant is skipped.
+
 ## Known limitations
 
 * All civ tables are still hardcoded snapshots of game data; future patches
