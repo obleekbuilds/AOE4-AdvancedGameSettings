@@ -152,12 +152,43 @@ Keys a civ genuinely lacks are now *omitted* (not guessed) so the section 3
 fallback chain handles them. After the fix, a re-run of the archive sweep finds
 zero referenced blueprint names missing from game data.
 
+## 7. Player colour enforcement resurrected (nearest-colour matching)
+
+**File:** `assets/scar/gameplay/ags_color_maintainer.scar`
+
+Confirmed broken in-game (2026-08-23): lobby-picked colours were ignored —
+everyone rendered with default slot-order colours (player 1 blue, player 2
+red, ...). The module maps each player's picked colour to a palette slot via
+a hardcoded `"#AARRGGBB"` → slot table; the game changed its palette hexes
+(again), every lookup missed, and the inherited nil-guard skipped every
+player. This was the accepted "stale colour table" limitation; it is now
+materially fixed rather than tolerated:
+
+* Exact hex match is only a fast path. A miss now falls through to
+  **nearest-reference matching on numeric RGB** (from `Player_GetUIColour`'s
+  `{r,g,b}`) against nine hue anchors (blue/red/yellow/green/turquoise/
+  purple/orange/pink/grey — the palette's stable slot order). A palette
+  *tweak* can no longer disable enforcement; even a palette *redesign*
+  degrades to the perceptually closest slot instead of doing nothing.
+* `AGS_ColorMaintainer_ForceColor` now calls the engine's current
+  `Game_SetPlayerColour` first; the two functions the mod used are marked
+  DEPRECATED in scardocs (kept as belt-and-braces — the base game still
+  calls them too).
+* Each player's read colour string and chosen slot are printed to the log,
+  so one test match documents the current palette hexes for the fast-path
+  table.
+
+Needs in-game verification that slot indices still map 1=blue ... 9=grey
+(the deprecation notes and current base-game usage say they do).
+
 ## Known limitations
 
-* The color-to-slot table (`ags_color_maintainer.scar`) and all civ tables are still
-  hardcoded snapshots of game data; future patches degrade them gracefully now, but
-  full support for a new civilization still requires adding table entries (see the
-  "Adding New Civilization Variants" notes in Sachtleben's fork history).
+* All civ tables are still hardcoded snapshots of game data; future patches
+  degrade them gracefully now, but full support for a new civilization still
+  requires adding table entries (see the "Adding New Civilization Variants"
+  notes in Sachtleben's fork history). The colour-to-slot table is no longer
+  on this list — nearest-colour matching (section 7) keeps colour enforcement
+  working across palette changes.
 * The `AGS_CIV_PREFIXES` trailing-underscore fix for `chinese_ha_01`, `french_ha_01`
   and `hre_ha_01` follows the pattern of every other variant entry but the real
   in-game construction menu names could not be verified outside the game — test the

@@ -22,7 +22,12 @@ AGS_COLOR_MAINTAINER_MODULE = "AGS_ColorMaintainer"
 --	{ Color = AGS_GS_COLOR_GREY },
 --}
 
--- This needs to be fixed everytime they change colours...
+-- FORK FIX: the exact-hex table below goes stale every time the game
+-- tweaks its palette, and unmatched players were silently skipped — so
+-- after a palette change NOBODY's picked colour was enforced and everyone
+-- rendered with default slot-order colours. Exact hex is now only a fast
+-- path; unmatched colours fall through to nearest-reference matching on
+-- numeric RGB (see AGS_ColorMaintainer_NearestSlot), which cannot miss.
 AGS_COLOR_MAINTAINER_TO_SLOT_TABLE = { -- Holds the slot index of each player colour
 	["#FF188CFF"] = 1,
 	["#FFFF3B30"] = 2,
@@ -33,6 +38,22 @@ AGS_COLOR_MAINTAINER_TO_SLOT_TABLE = { -- Holds the slot index of each player co
 	["#FFFF8800"] = 7,
 	["#FFF65BB2"] = 8,
 	["#FF888888"] = 9
+}
+
+-- Representative RGB per colour slot (hue anchors, not exact palette
+-- values): 1 blue, 2 red, 3 yellow, 4 green, 5 turquoise, 6 purple,
+-- 7 orange, 8 pink, 9 grey. A palette tweak keeps each colour nearest
+-- its own anchor, so nearest-match survives what exact-match cannot.
+AGS_COLOR_MAINTAINER_REFERENCE_COLORS = {
+	{ 0x18, 0x8C, 0xFF },
+	{ 0xFF, 0x3B, 0x30 },
+	{ 0xEB, 0xD3, 0x00 },
+	{ 0x00, 0xC7, 0x00 },
+	{ 0x00, 0xE8, 0xE8 },
+	{ 0xAE, 0x6B, 0xFF },
+	{ 0xFF, 0x88, 0x00 },
+	{ 0xF6, 0x5B, 0xB2 },
+	{ 0x88, 0x88, 0x88 },
 }
 
 AGS_COLOR_MAINTAINER_CAN_REFRESH = true
@@ -88,10 +109,34 @@ function AGS_ColorMaintainer_DisableEnforcing()
 	AGS_COLOR_MAINTAINER_CAN_REFRESH = false
 end
 
+function AGS_ColorMaintainer_NearestSlot(colour)
+	local best_slot = nil
+	local best_distance = nil
+	for slot, ref in ipairs(AGS_COLOR_MAINTAINER_REFERENCE_COLORS) do
+		local dr = colour.r - ref[1]
+		local dg = colour.g - ref[2]
+		local db = colour.b - ref[3]
+		local distance = dr * dr + dg * dg + db * db
+		if best_distance == nil or distance < best_distance then
+			best_distance = distance
+			best_slot = slot
+		end
+	end
+	return best_slot
+end
+
 function AGS_ColorMaintainer_CreateAutomaticSlots()
 	for _, player in pairs(PLAYERS) do
+		local colour = Player_GetUIColour(player.id)
+		local colour_text = UI_GetColourAsString(colour)
+		local slot = AGS_COLOR_MAINTAINER_TO_SLOT_TABLE[colour_text]
+		if slot == nil then
+			slot = AGS_ColorMaintainer_NearestSlot(colour)
+		end
+		-- Logged so a single test match reveals the current palette hexes.
+		AGS_Print("AGS_ColorMaintainer: colour " .. tostring(colour_text) .. " -> slot " .. tostring(slot))
 		player.AGS_Colors = {
-			Slot = AGS_COLOR_MAINTAINER_TO_SLOT_TABLE[UI_GetColourAsString(Player_GetUIColour(player.id))],
+			Slot = slot,
 		}
 	end
 end
@@ -113,6 +158,10 @@ function AGS_ColorMaintainer_ForceColor(player, slot)
 	if slot == nil then
 		return
 	end
+	-- Game_SetPlayerColour is the engine's current API; the two slot
+	-- variants are deprecated aliases kept as belt-and-braces (the base
+	-- game still calls them, so they still work).
+	Game_SetPlayerColour(player.id, slot)
 	Game_SetPlayerSlotColour(player.id, slot)
 	Game_SetPlayerUISlotColour(player.id, slot)
 end
