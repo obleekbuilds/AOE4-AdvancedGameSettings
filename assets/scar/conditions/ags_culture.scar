@@ -59,8 +59,11 @@ function AGS_Culture_OnPlay()
 	AGS_Print("AGS_Culture_OnPlay")
 	AGS_Culture_CreateSiteData()
 	-- FORK FIX: Treaty broadcasts TreatyStarted before this OnPlay runs, while the site
-	-- table was still empty; re-apply the current treaty state now that sites exist.
-	AGS_Culture_EnableSacredSitesCapture(AGS_CULTURE_ACTIVE)
+	-- table was still empty; re-apply it now that sites exist. Only the disable is
+	-- re-applied — in a no-treaty match the engine is not touched at all (upstream behavior).
+	if not AGS_CULTURE_ACTIVE then
+		AGS_Culture_EnableSacredSitesCapture(false)
+	end
 	Rule_AddGlobalEvent(AGS_Culture_OnStrategicPointChanged, GE_StrategicPointChanged)
 	AGS_Culture_CreateObjective()
 	AGS_Culture_UpdateObjective()
@@ -108,6 +111,11 @@ end
 ---------------------------------------------------------------------------------------------------
 
 function AGS_Culture_OnStrategicPointChanged(context)
+	-- FORK FIX: ignore point-change events while sites are treaty-disabled;
+	-- the handler queries capture progress, which is fatal on disabled points.
+	if not AGS_CULTURE_ACTIVE then
+		return
+	end
 	-- Check if squad is nil and exit function if there is no instigating squad, except for change
 	-- types 6, 7 and 11 which do not require a squad (squad can die within or leave the radius).
 	-- FORK FIX: the old condition 'not context.changeType == 7' parsed as
@@ -122,6 +130,11 @@ function AGS_Culture_OnStrategicPointChanged(context)
 end
 
 function AGS_Culture_OnTimerTick()
+	-- FORK FIX: while a treaty holds, sites are disabled as strategic points
+	-- and querying their capture progress is a fatal engine error.
+	if not AGS_CULTURE_ACTIVE then
+		return
+	end
 	-- Determine current objective progress.
 	AGS_Culture_UpdateSacredSiteObjectives()
 	-- Update objectives

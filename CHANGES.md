@@ -293,6 +293,28 @@ a 60-second delay, which is the accepted trade-off: a functioning opponent
 with a small settling head start instead of a vegetable. If a town center
 already exists by then (mode script or takeover), the grant is skipped.
 
+## 10. Hotfix: treaty + sacred-site crash (regression from section 8)
+
+**Files:** `conditions/ags_religious.scar`, `conditions/ags_culture.scar`
+
+Section 8's "treaty never disables sacred-site capture" fix re-applied the
+treaty state after the site tables are populated — which made upstream's
+`Entity_EnableStrategicPoint(site, false)` code path execute for the first
+time ever (it had always run on an empty table). The engine fatals when
+`Player_GetStrategicPointCaptureProgress` is called on a disabled point, so
+any match with Treaty enabled and the Religious (or City-States Culture)
+condition active crashed on the first objective tick (~1 second in).
+
+Fix, verified in a live match (3-minute treaty, Religious on, crash-free
+through the treaty and its end transition): the periodic objective tick and
+the strategic-point-change handler in both files now early-return while
+capture is treaty-disabled (victory must not progress during peace anyway),
+and the OnPlay re-apply only touches the engine when a treaty is actually
+holding — a no-treaty match makes no new engine calls at all.
+
+Note for maintainers: `EssenceEditor.exe -rtm --build_mod <path.aoe4mod>`
+performs a full headless build in seconds — no GUI, no renderer needed.
+
 ## Known limitations
 
 * All civ tables are still hardcoded snapshots of game data; future patches

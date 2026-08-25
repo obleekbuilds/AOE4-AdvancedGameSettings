@@ -63,8 +63,11 @@ function AGS_Religious_OnPlay()
 	AGS_Print("AGS_Religious_OnPlay")
 	AGS_Religious_InitializeSacredSites()
 	-- FORK FIX: Treaty's TreatyStarted fires before this OnPlay populates the site table, so its
-	-- capture-disable hit zero sites; re-apply the already-broadcast treaty state now that sites exist.
-	AGS_Religious_EnableSacredSitesCapture(AGS_RELIGIOUS_ACTIVE)
+	-- capture-disable hit zero sites; re-apply it now that sites exist. Only the disable is
+	-- re-applied — in a no-treaty match the engine is not touched at all (upstream behavior).
+	if not AGS_RELIGIOUS_ACTIVE then
+		AGS_Religious_EnableSacredSitesCapture(false)
+	end
 	Rule_AddGlobalEvent(AGS_Religious_OnStrategicPointChanged, GE_StrategicPointChanged)
 	AGS_Religious_CreateObjective()
 	AGS_Religious_UpdateObjective()
@@ -117,6 +120,11 @@ end
 ---------------------------------------------------------------------------------------------------
 
 function AGS_Religious_OnStrategicPointChanged(context)
+	-- FORK FIX: ignore point-change events while sites are treaty-disabled;
+	-- the handler queries capture progress, which is fatal on disabled points.
+	if not AGS_RELIGIOUS_ACTIVE then
+		return
+	end
 	-- Check if squad is nil and exit function if there is no instigating squad, except for changeType CT_StartedRevertingCooldown (7)
 	-- since that change type doesn't require a squad, and the squad can be nil when a squad dies within the capture radius.
 	if context.instigatorSquad == nil and not context.changeType == 7 then
@@ -128,6 +136,12 @@ function AGS_Religious_OnStrategicPointChanged(context)
 end
 
 function AGS_Religious_OnTimerTick()
+	-- FORK FIX: while a treaty holds, sacred sites are disabled as strategic
+	-- points and Player_GetStrategicPointCaptureProgress on them is a fatal
+	-- engine error; victory must not progress during peace anyway.
+	if not AGS_RELIGIOUS_ACTIVE then
+		return
+	end
 	-- Determine current objective progress.
 	AGS_Religious_UpdateSacredSiteObjectives()
 	-- Update objectives
